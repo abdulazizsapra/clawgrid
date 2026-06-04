@@ -8,6 +8,7 @@ export interface OpenClawInstance {
   token: string
   sshHost: string
   sshPort?: number
+  sshJumpHost?: string
   sshUser: string
   sshKeyPath: string
   workspacePath: string
