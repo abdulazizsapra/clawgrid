@@ -1,22 +1,35 @@
 'use client'
 import { useState } from 'react'
-import { Save, Trash2 } from 'lucide-react'
+import { Save, Trash2, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { OpenClawInstance } from '@/types'
 
-function Field({ label, name, value, onChange, type = 'text', placeholder }: {
-  label: string; name: string; value: string; onChange: (v: string) => void
-  type?: string; placeholder?: string
+function Field({
+  label, value, onChange, type = 'text', placeholder, hint,
+}: {
+  label: string; value: string; onChange: (v: string) => void
+  type?: string; placeholder?: string; hint?: string
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium mb-1.5" style={{ color: 'var(--text-muted)' }}>{label}</label>
-      <input
-        type={type} name={name} value={value} onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full rounded-lg px-3 py-2 text-sm outline-none transition-colors"
-        style={{ background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
-      />
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>
+        {label}
+      </label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />
+      {hint && <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>{hint}</p>}
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-dim)', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+        {title}
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -41,49 +54,66 @@ export function InstanceSettings({ instance }: { instance: OpenClawInstance }) {
   }
 
   async function remove() {
-    if (!confirm(`Delete instance "${instance.name}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${instance.name}"? This cannot be undone.`)) return
     setDeleting(true)
     await fetch('/api/instances', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: instance.id }) })
     router.push('/fleet')
   }
 
   return (
-    <div className="p-6 max-w-xl">
-      <h1 className="text-xl font-semibold mb-1">Instance Settings</h1>
-      <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>{instance.name}</p>
-
-      <div className="space-y-4 mb-8">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="ID (slug)" name="id" value={form.id} onChange={set('id')} placeholder="vm-openclaw" />
-          <Field label="Display Name" name="name" value={form.name} onChange={set('name')} placeholder="Command" />
-        </div>
-        <Field label="Role" name="role" value={form.role} onChange={set('role')} placeholder="command / supply / voice" />
-        <Field label="Gateway URL" name="gatewayUrl" value={form.gatewayUrl} onChange={set('gatewayUrl')} placeholder="http://localhost:4000" />
-        <Field label="Gateway Token" name="token" value={form.token} onChange={set('token')} type="password" placeholder="Bearer token for gateway auth" />
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="SSH Host" name="sshHost" value={form.sshHost} onChange={set('sshHost')} placeholder="10.0.0.10" />
-          <Field label="SSH User" name="sshUser" value={form.sshUser} onChange={set('sshUser')} placeholder="openclaw" />
-        </div>
-        <Field label="SSH Key Path" name="sshKeyPath" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="/root/.ssh/id_ed25519" />
-        <Field label="Workspace Path (SSHFS mount)" name="workspacePath" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/mnt/openclaw-command" />
+    <div style={{ padding: 32, maxWidth: 560 }}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 600 }}>Instance Settings</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>{instance.name} · {instance.id}</p>
       </div>
 
-      <div className="flex items-center gap-3">
+      <Section title="Identity">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <Field label="ID (slug)" value={form.id} onChange={set('id')} placeholder="vm-openclaw" />
+          <Field label="Display Name" value={form.name} onChange={set('name')} placeholder="Command" />
+        </div>
+        <Field label="Role" value={form.role} onChange={set('role')} placeholder="command / supply / voice" />
+      </Section>
+
+      <Section title="Gateway">
+        <Field label="URL" value={form.gatewayUrl} onChange={set('gatewayUrl')} placeholder="http://localhost:4000" hint="Tunneled port on hub-server pointing to the gateway" />
+        <Field label="Bearer Token" value={form.token} onChange={set('token')} type="password" placeholder="Set in openclaw.json at gateway.auth.token" />
+      </Section>
+
+      <Section title="SSH Access">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <Field label="Host" value={form.sshHost} onChange={set('sshHost')} placeholder="10.0.0.10" />
+          <Field label="User" value={form.sshUser} onChange={set('sshUser')} placeholder="openclaw" />
+        </div>
+        <Field label="Private Key Path" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="/root/.ssh/id_ed25519" hint="Path on the machine running this panel (hub-server)" />
+        <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/mnt/openclaw-command" hint="SSHFS mount of the instance's ~/.openclaw directory" />
+      </Section>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
           onClick={save} disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-          style={{ background: 'var(--accent)', color: 'white' }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 8,
+            fontSize: 13, fontWeight: 500, cursor: saving ? 'not-allowed' : 'pointer',
+            background: saved ? 'rgba(34,197,94,0.15)' : 'var(--accent)',
+            color: saved ? 'var(--success)' : 'white',
+            border: saved ? '1px solid rgba(34,197,94,0.3)' : '1px solid transparent',
+          }}
         >
-          <Save size={13} />
-          {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Changes'}
+          {saved ? <CheckCircle size={13} /> : <Save size={13} />}
+          {saving ? 'Saving…' : saved ? 'Saved' : 'Save Changes'}
         </button>
         <button
           onClick={remove} disabled={deleting}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors"
-          style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: '1px solid rgba(239,68,68,0.2)' }}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7, padding: '9px 18px', borderRadius: 8,
+            fontSize: 13, cursor: deleting ? 'not-allowed' : 'pointer',
+            background: 'var(--error-dim)', color: 'var(--error)',
+            border: '1px solid rgba(239,68,68,0.2)',
+          }}
         >
           <Trash2 size={13} />
-          {deleting ? 'Deleting…' : 'Delete Instance'}
+          {deleting ? 'Deleting…' : 'Delete'}
         </button>
       </div>
     </div>

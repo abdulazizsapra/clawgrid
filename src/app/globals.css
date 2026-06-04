@@ -1,21 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0a0a0a;
-  --surface: #111111;
-  --surface2: #1a1a1a;
-  --border: #2a2a2a;
-  --text: #e5e5e5;
-  --text-muted: #737373;
+  --bg: #0d0d0f;
+  --surface: #16171a;
+  --surface2: #1e2024;
+  --surface3: #26282e;
+  --border: #2e3138;
+  --border-focus: #4a5060;
+  --text: #e8eaf0;
+  --text-muted: #7a7f8e;
+  --text-dim: #4a4f5e;
   --accent: #3b82f6;
   --accent-hover: #2563eb;
+  --accent-dim: rgba(59,130,246,0.12);
   --success: #22c55e;
   --warning: #f59e0b;
   --error: #ef4444;
+  --error-dim: rgba(239,68,68,0.1);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; }
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-focus); }
+
+input, textarea, select {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+input::placeholder, textarea::placeholder { color: var(--text-dim); }
+
+button { cursor: pointer; font-family: inherit; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; }
+
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-bounce { animation: bounce 1s infinite; }
+.animate-pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes bounce {
+  0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
+  50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); }
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }

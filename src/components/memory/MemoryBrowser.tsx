@@ -20,38 +20,23 @@ export function MemoryBrowser({ instance }: { instance: OpenClawInstance }) {
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true); setError(null)
     try {
       const results: MemoryFile[] = []
       for (const file of MEMORY_FILES) {
         const res = await fetch(`/api/ssh/${instance.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'exec',
-            args: { command: `cat "${instance.workspacePath}/${file}" 2>/dev/null && echo "__SIZE__$(wc -c < "${instance.workspacePath}/${file}" 2>/dev/null)"` },
-          }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'exec', args: { command: `cat "${instance.workspacePath}/${file}" 2>/dev/null` } }),
         })
         const data = await res.json()
-        if (data.stdout && data.code === 0) {
-          const parts = data.stdout.split('__SIZE__')
-          results.push({
-            path: file,
-            name: file,
-            content: parts[0] ?? '',
-            size: parseInt(parts[1] ?? '0', 10) || 0,
-          })
+        if (data.stdout?.trim()) {
+          results.push({ path: file, name: file, content: data.stdout, size: data.stdout.length })
         }
       }
-      // Also scan for any .md files in memory/ subdir
+      // Scan memory/ subdir
       const scanRes = await fetch(`/api/ssh/${instance.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'exec',
-          args: { command: `find "${instance.workspacePath}/memory" -name "*.md" -o -name "*.json" 2>/dev/null | head -20` },
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'exec', args: { command: `find "${instance.workspacePath}/memory" -name "*.md" -o -name "*.json" 2>/dev/null | head -20` } }),
       })
       const scanData = await scanRes.json()
       const extraPaths = (scanData.stdout || '').trim().split('\n').filter(Boolean)
@@ -59,8 +44,7 @@ export function MemoryBrowser({ instance }: { instance: OpenClawInstance }) {
         const name = p.split('/').pop() ?? p
         if (results.find(r => r.name === name)) continue
         const fr = await fetch(`/api/ssh/${instance.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'exec', args: { command: `cat "${p}" 2>/dev/null` } }),
         })
         const fd = await fr.json()
@@ -92,61 +76,78 @@ export function MemoryBrowser({ instance }: { instance: OpenClawInstance }) {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: '100vh' }}>
-      <div className="flex items-center justify-between px-5 py-3 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-2">
-          <Brain size={16} style={{ color: 'var(--accent)' }} />
-          <span className="font-semibold">Memory Browser</span>
-          <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>{instance.name}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Brain size={15} style={{ color: 'var(--accent)' }} />
+          <span style={{ fontWeight: 600 }}>Memory Browser</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{instance.name}</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5" style={{ background: 'var(--surface2)', border: '1px solid var(--border)' }}>
-            <Search size={12} style={{ color: 'var(--text-muted)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 10px' }}>
+            <Search size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search…"
-              className="bg-transparent outline-none text-xs w-32"
-              style={{ color: 'var(--text)' }}
+              style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 12, width: 120, color: 'var(--text)', padding: 0, boxShadow: 'none' }}
             />
           </div>
-          <button onClick={download} disabled={!current} className="p-1.5 rounded-lg transition-colors" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
+          <button onClick={download} disabled={!current} title="Download" style={{ padding: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text-muted)', cursor: current ? 'pointer' : 'not-allowed' }}>
             <Download size={13} />
           </button>
-          <button onClick={load} disabled={loading} className="p-1.5 rounded-lg transition-colors" style={{ background: 'var(--surface2)', color: 'var(--text-muted)' }}>
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+          <button onClick={load} disabled={loading} title="Refresh" style={{ padding: 6, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-48 shrink-0 overflow-y-auto p-2 space-y-1" style={{ borderRight: '1px solid var(--border)', background: 'var(--surface)' }}>
+      {/* Body */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        {/* File list */}
+        <div style={{ width: 200, minWidth: 200, flexShrink: 0, overflowY: 'auto', padding: '8px', background: 'var(--surface)', borderRight: '1px solid var(--border)' }}>
+          {loading && (
+            <div style={{ padding: '12px 10px', fontSize: 12, color: 'var(--text-muted)' }}>Loading…</div>
+          )}
+          {!loading && files.length === 0 && (
+            <div style={{ padding: '12px 10px', fontSize: 12, color: 'var(--text-muted)' }}>
+              {error ? `Error: ${error}` : 'No memory files found'}
+            </div>
+          )}
           {files.map(f => (
             <button
               key={f.name}
               onClick={() => setActive(f.name)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors"
               style={{
-                background: active === f.name ? 'rgba(59,130,246,0.15)' : 'transparent',
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                padding: '8px 10px', borderRadius: 7, fontSize: 12, textAlign: 'left',
+                background: active === f.name ? 'var(--accent-dim)' : 'transparent',
                 color: active === f.name ? 'var(--accent)' : 'var(--text-muted)',
+                border: 'none', cursor: 'pointer',
               }}
             >
-              <FileText size={11} />
-              <span className="truncate">{f.name}</span>
+              <FileText size={11} style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
             </button>
           ))}
-          {!loading && files.length === 0 && (
-            <p className="text-xs px-3 py-2" style={{ color: 'var(--text-muted)' }}>No memory files found</p>
-          )}
         </div>
 
-        <div className="flex-1 overflow-auto p-5">
-          {error && <p className="text-sm mb-4" style={{ color: 'var(--error)' }}>{error}</p>}
-          {loading && <div className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading…</div>}
-          {current && (
-            <pre className="text-xs leading-relaxed whitespace-pre-wrap font-mono" style={{ color: 'var(--text)' }}>
-              {displayContent || <span style={{ color: 'var(--text-muted)' }}>Empty file</span>}
+        {/* Content */}
+        <div style={{ flex: 1, overflow: 'auto', padding: 20, minWidth: 0 }}>
+          {error && !files.length && (
+            <div style={{ fontSize: 13, color: 'var(--error)', background: 'var(--error-dim)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
+          {current ? (
+            <pre style={{ fontSize: 12, lineHeight: 1.7, whiteSpace: 'pre-wrap', fontFamily: "'SF Mono', 'Fira Code', monospace", color: 'var(--text)' }}>
+              {displayContent || <span style={{ color: 'var(--text-dim)' }}>Empty file</span>}
             </pre>
+          ) : !loading && (
+            <div style={{ color: 'var(--text-muted)', fontSize: 13, paddingTop: 40, textAlign: 'center' }}>
+              {files.length > 0 ? 'Select a file' : 'No memory files found on this instance'}
+            </div>
           )}
         </div>
       </div>

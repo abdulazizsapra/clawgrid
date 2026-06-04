@@ -21,13 +21,14 @@ export default async function FleetPage() {
   const online = instancesWithHealth.filter(i => i.status === 'online').length
 
   return (
-    <div className="flex" style={{ minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar instances={instancesWithHealth} />
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="mb-6">
-          <h1 className="text-xl font-semibold">Fleet Overview</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            {online} / {instancesWithHealth.length} instances online
+      <main style={{ flex: 1, padding: 28, overflowY: 'auto', minWidth: 0 }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 600 }}>Fleet Overview</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+            <span style={{ color: online > 0 ? 'var(--success)' : 'var(--text-muted)', fontWeight: 600 }}>{online}</span>
+            {' / '}{instancesWithHealth.length} instances online
           </p>
         </div>
         <FleetGrid instances={instancesWithHealth} />
