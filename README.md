@@ -22,7 +22,7 @@
 
 Every other OpenClaw dashboard manages **one instance**. ClawGrid manages **your whole fleet**.
 
-When you run multiple OpenClaw agents across different servers — a command agent, a supply agent, a voice agent — you end up SSH-ing into each machine separately to check logs, fix failed crons, review memory, or update configs. That's the problem ClawGrid solves.
+When you run multiple OpenClaw agents across different servers — an Atlas research agent, a Forge task-runner, an Echo voice agent — you end up SSH-ing into each machine separately to check logs, fix failed crons, review memory, or update configs. That's the problem ClawGrid solves.
 
 > **"The only OpenClaw panel with two-hop SSH, agent self-analysis, visual schedule builder, and per-job cost estimates."**
 
@@ -118,22 +118,52 @@ SSH keys live on the **panel's server only** — they never reach the browser. A
 
 ## Configuration
 
-Each instance in `data/instances.json`:
+Add instances via the **Add Instance** UI, or edit `data/instances.json` directly.
+
+A three-agent fleet looks like this:
 
 ```json
-{
-  "id": "agent-1",
-  "name": "Command",
-  "role": "command",
-  "gatewayUrl": "http://localhost:4000",
-  "token": "your-gateway-token",
-  "sshHost": "10.0.0.5",
-  "sshPort": 22,
-  "sshJumpHost": "user@bastion.example.com",
-  "sshUser": "openclaw",
-  "sshKeyPath": "/path/to/key",
-  "workspacePath": "/home/openclaw/.openclaw"
-}
+[
+  {
+    "id": "atlas",
+    "name": "Atlas — Research",
+    "role": "command",
+    "gatewayUrl": "http://localhost:4000",
+    "token": "your-gateway-token",
+    "sshHost": "10.0.0.10",
+    "sshPort": 22,
+    "sshJumpHost": "deploy@bastion.example.com",
+    "sshUser": "openclaw",
+    "sshKeyPath": "~/.ssh/clawgrid",
+    "workspacePath": "/home/openclaw/.openclaw"
+  },
+  {
+    "id": "forge",
+    "name": "Forge — Builder",
+    "role": "supply",
+    "gatewayUrl": "http://localhost:4001",
+    "token": "your-gateway-token",
+    "sshHost": "10.0.0.11",
+    "sshPort": 22,
+    "sshJumpHost": "deploy@bastion.example.com",
+    "sshUser": "openclaw",
+    "sshKeyPath": "~/.ssh/clawgrid",
+    "workspacePath": "/home/openclaw/.openclaw"
+  },
+  {
+    "id": "echo",
+    "name": "Echo — Voice",
+    "role": "voice",
+    "gatewayUrl": "http://localhost:4002",
+    "token": "your-gateway-token",
+    "sshHost": "10.0.0.12",
+    "sshPort": 22,
+    "sshJumpHost": "deploy@bastion.example.com",
+    "sshUser": "openclaw",
+    "sshKeyPath": "~/.ssh/clawgrid",
+    "workspacePath": "/home/openclaw/.openclaw"
+  }
+]
 ```
 
 > **Finding your gateway token:**
