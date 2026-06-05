@@ -1,5 +1,26 @@
 import type { GatewayHealth } from '@/types'
 
+export interface GatewayConfig {
+  assistantName: string
+  assistantAvatar: string
+  assistantAgentId: string
+  serverVersion: string
+}
+
+export async function fetchGatewayConfig(gatewayUrl: string, token: string): Promise<GatewayConfig | null> {
+  try {
+    const res = await fetch(`${gatewayUrl}/__openclaw/control-ui-config.json`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: AbortSignal.timeout(5000),
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
 export async function fetchGatewayHealth(gatewayUrl: string, token: string): Promise<GatewayHealth> {
   try {
     const res = await fetch(`${gatewayUrl}/__openclaw/control-ui-config.json`, {
@@ -7,10 +28,10 @@ export async function fetchGatewayHealth(gatewayUrl: string, token: string): Pro
       signal: AbortSignal.timeout(5000),
       cache: 'no-store',
     })
-    if (!res.ok) return { instanceId: gatewayUrl, status: 'degraded', error: `HTTP ${res.status}` }
+    if (!res.ok) return { instanceId: '', status: 'degraded', error: `HTTP ${res.status}` }
     const data = await res.json()
     return {
-      instanceId: gatewayUrl,
+      instanceId: '',
       status: 'online',
       version: data.version,
       uptime: data.uptime,
@@ -18,7 +39,7 @@ export async function fetchGatewayHealth(gatewayUrl: string, token: string): Pro
       activeChats: data.activeChats,
     }
   } catch (e: unknown) {
-    return { instanceId: gatewayUrl, status: 'offline', error: e instanceof Error ? e.message : 'unreachable' }
+    return { instanceId: '', status: 'offline', error: e instanceof Error ? e.message : 'unreachable' }
   }
 }
 
@@ -37,7 +58,8 @@ export async function* streamChat(
     body: JSON.stringify({ model, messages, stream: true }),
   })
   if (!res.ok) throw new Error(`Gateway error ${res.status}`)
-  const reader = res.body!.getReader()
+  if (!res.body) throw new Error('Empty response body from gateway')
+  const reader = res.body.getReader()
   const dec = new TextDecoder()
   let buf = ''
   while (true) {

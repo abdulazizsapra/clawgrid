@@ -1,15 +1,20 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { ThemeLoader } from '@/components/ThemeLoader'
 
 export const metadata: Metadata = {
-  title: 'OpenClaw Control Panel',
-  description: 'Central management for OpenClaw instances',
+  title: 'ClawGrid',
+  description: 'Fleet management for OpenClaw AI agent instances',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body suppressHydrationWarning><ThemeLoader />{children}</body>
     </html>
   )
 }

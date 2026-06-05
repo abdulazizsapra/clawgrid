@@ -1,7 +1,166 @@
 'use client'
+import { sshExec } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Zap, User, MessageSquare, Clock, ChevronRight } from 'lucide-react'
+import { RefreshCw, Zap, User, MessageSquare, Clock, ChevronRight, Wrench, CheckCircle, XCircle, Shield } from 'lucide-react'
 import type { OpenClawInstance } from '@/types'
+
+// ─── Tool inventory types ─────────────────────────────────────────────────────
+
+interface ToolConfig {
+  safeBins: string[]
+  safeBinProfiles: Record<string, unknown>
+  trustedDirs: string[]
+  fsWorkspaceOnly: boolean
+  byProvider: Record<string, { deny?: string[]; allow?: string[] }>
+  execAsk: string
+  execSecurity: string
+}
+
+interface SkillEntry { enabled: boolean }
+
+function ToolInventory({ instance }: { instance: OpenClawInstance }) {
+  const [tools, setTools] = useState<ToolConfig | null>(null)
+  const [skills, setSkills] = useState<Record<string, SkillEntry>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      try {
+        const res = await fetch(`/api/ssh/${instance.id}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'exec', args: { command: `python3 -c "
+import json
+cfg = json.load(open('${instance.workspacePath}/openclaw.json'))
+t = cfg.get('tools', {})
+result = {
+    'safeBins': t.get('exec', {}).get('safeBins', []),
+    'safeBinProfiles': list(t.get('exec', {}).get('safeBinProfiles', {}).keys()),
+    'trustedDirs': t.get('exec', {}).get('safeBinTrustedDirs', []),
+    'fsWorkspaceOnly': t.get('fs', {}).get('workspaceOnly', False),
+    'byProvider': t.get('byProvider', {}),
+    'execAsk': t.get('exec', {}).get('ask', 'unknown'),
+    'execSecurity': t.get('exec', {}).get('security', 'unknown'),
+    'skills': {k: {'enabled': v.get('enabled', False)} for k,v in cfg.get('skills', {}).get('entries', {}).items()},
+}
+print(json.dumps(result))
+"` } }),
+        })
+        const d = await res.json()
+        const parsed = JSON.parse(d.stdout?.trim() || '{}')
+        setTools({
+          safeBins: parsed.safeBins || [],
+          safeBinProfiles: parsed.safeBinProfiles || [],
+          trustedDirs: parsed.trustedDirs || [],
+          fsWorkspaceOnly: parsed.fsWorkspaceOnly ?? false,
+          byProvider: parsed.byProvider || {},
+          execAsk: parsed.execAsk || '?',
+          execSecurity: parsed.execSecurity || '?',
+        })
+        setSkills(parsed.skills || {})
+      } catch { /* show empty state */ }
+      finally { setLoading(false) }
+    }
+    load()
+  }, [instance.id, instance.workspacePath])
+
+  if (loading) return <div style={{ padding: 24, fontSize: 13, color: 'var(--text-muted)' }}>Loading tool inventory…</div>
+  if (!tools) return <div style={{ padding: 24, fontSize: 13, color: 'var(--text-muted)' }}>Failed to load</div>
+
+  const enabledSkills = Object.entries(skills).filter(([, v]) => v.enabled)
+  const disabledSkills = Object.entries(skills).filter(([, v]) => !v.enabled)
+
+  const section = (title: string, icon: React.ReactNode) => (
+    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, marginTop: 20 }}>
+      {icon}{title}
+    </div>
+  )
+
+  return (
+    <div style={{ padding: 24, overflow: 'auto', height: '100%' }}>
+      {/* Exec policy */}
+      {section('Exec Policy', <Shield size={12} />)}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+        {[
+          { label: 'Security', value: tools.execSecurity, good: tools.execSecurity === 'full' },
+          { label: 'Ask mode', value: tools.execAsk, good: tools.execAsk !== 'off' },
+          { label: 'FS access', value: tools.fsWorkspaceOnly ? 'workspace only' : 'unrestricted', good: tools.fsWorkspaceOnly },
+        ].map(s => (
+          <div key={s.label} style={{ background: s.good ? 'rgba(34,197,94,0.07)' : 'rgba(245,158,11,0.07)', border: `1px solid ${s.good ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`, borderRadius: 8, padding: '8px 12px' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 3 }}>{s.label}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: s.good ? 'var(--success)' : 'var(--warning)' }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Safe binaries */}
+      {section('Allowed Tools (Safe Bins)', <Wrench size={12} />)}
+      {tools.safeBins.length === 0
+        ? <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic' }}>No safe bins configured</div>
+        : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {tools.safeBins.map(b => (
+            <span key={b} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', color: 'var(--success)', fontFamily: 'monospace' }}>
+              {b}
+            </span>
+          ))}
+        </div>
+      }
+      {tools.trustedDirs.length > 0 && (
+        <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-dim)' }}>
+          Trusted dirs: {tools.trustedDirs.map(d => <code key={d} style={{ marginLeft: 6, color: 'var(--text-muted)' }}>{d}</code>)}
+        </div>
+      )}
+
+      {/* Provider restrictions */}
+      {Object.keys(tools.byProvider).length > 0 && (
+        <>
+          {section('Channel Tool Restrictions', <Shield size={12} />)}
+          {Object.entries(tools.byProvider).map(([provider, rules]) => {
+            const r = rules as { deny?: string[]; allow?: string[] }
+            return (
+              <div key={provider} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', marginBottom: 8 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>{provider}</div>
+                {r.deny && r.deny.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>Denied:</span>
+                    {r.deny.map(d => <span key={d} style={{ fontSize: 11, padding: '2px 7px', borderRadius: 4, background: 'rgba(239,68,68,0.1)', color: 'var(--error)' }}>{d}</span>)}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </>
+      )}
+
+      {/* Skills */}
+      {section(`Skills (${enabledSkills.length} enabled / ${disabledSkills.length} disabled)`, <Zap size={12} />)}
+      {enabledSkills.length === 0
+        ? <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic', marginBottom: 8 }}>No skills enabled</div>
+        : <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
+          {enabledSkills.map(([name]) => (
+            <span key={name} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 5, background: 'var(--accent-dim)', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <CheckCircle size={9} /> {name}
+            </span>
+          ))}
+        </div>
+      }
+      {disabledSkills.length > 0 && (
+        <details style={{ marginTop: 4 }}>
+          <summary style={{ fontSize: 12, color: 'var(--text-dim)', cursor: 'pointer', userSelect: 'none' }}>
+            {disabledSkills.length} disabled skills
+          </summary>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
+            {disabledSkills.map(([name]) => (
+              <span key={name} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 5, background: 'var(--surface3)', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <XCircle size={9} /> {name}
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
 
 interface AgentDef {
   id: string
@@ -35,17 +194,6 @@ interface AgentDetail {
   agent: AgentInfo
   sessions: SessionFile[]
   conversations: ConversationMessage[]
-}
-
-async function sshExec(instanceId: string, command: string): Promise<string> {
-  const res = await fetch(`/api/ssh/${instanceId}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'exec', args: { command } }),
-  })
-  const data = await res.json()
-  if (data.error) throw new Error(data.error)
-  return data.stdout ?? ''
 }
 
 function formatTime(iso: string): string {
@@ -93,7 +241,8 @@ export function AgentsView({ instance }: { instance: OpenClawInstance }) {
       )
       let agentDefs: Record<string, AgentDef> = {}
       try {
-        const cfg = JSON.parse(cfgOut.trim() || '{}')
+        let cfg: Record<string, unknown> = {}
+        try { cfg = JSON.parse(cfgOut.trim() || '{}') } catch { /* use empty config */ }
         const rawAgents = cfg.agents
         if (rawAgents && typeof rawAgents === 'object') {
           if (Array.isArray(rawAgents)) {
@@ -217,8 +366,28 @@ export function AgentsView({ instance }: { instance: OpenClawInstance }) {
     }
   }, [instance.id, wp])
 
+  const [tab, setTab] = useState<'agents' | 'tools'>('agents')
+
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', flexShrink: 0, background: 'var(--surface)' }}>
+        {[
+          { key: 'agents' as const, label: 'Agents' },
+          { key: 'tools' as const, label: 'Tool Inventory' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '10px 18px', fontSize: 13, fontWeight: tab === t.key ? 600 : 400,
+            border: 'none', background: 'transparent', cursor: 'pointer',
+            color: tab === t.key ? 'var(--accent)' : 'var(--text-muted)',
+            borderBottom: tab === t.key ? '2px solid var(--accent)' : '2px solid transparent',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab === 'tools' && <ToolInventory instance={instance} />}
+
+      {tab === 'agents' && <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {/* Sidebar */}
       <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', background: 'var(--surface)' }}>
         {/* Sidebar header */}
@@ -426,6 +595,7 @@ export function AgentsView({ instance }: { instance: OpenClawInstance }) {
           </div>
         )}
       </div>
+      </div>}
     </div>
   )
 }

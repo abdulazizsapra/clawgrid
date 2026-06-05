@@ -1,6 +1,18 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+/** Browser-side SSH exec helper — calls /api/ssh/:instanceId. Throws on SSH error. */
+export async function sshExec(instanceId: string, command: string): Promise<string> {
+  const res = await fetch(`/api/ssh/${instanceId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'exec', args: { command } }),
+  })
+  const data = await res.json()
+  if (data.error) throw new Error(data.error)
+  return data.stdout ?? ''
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

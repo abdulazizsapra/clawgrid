@@ -4,42 +4,19 @@ import type { OpenClawInstance, InstanceRegistry } from '@/types'
 
 const REGISTRY_PATH = path.join(process.cwd(), 'data', 'instances.json')
 
+// Default registry — replace with your actual instances via the UI or data/instances.json
 const DEFAULT_REGISTRY: InstanceRegistry = {
   instances: [
     {
-      id: 'vm-openclaw',
-      name: 'Command',
+      id: 'my-agent',
+      name: 'My Agent',
       role: 'command',
       gatewayUrl: 'http://localhost:4000',
       token: '',
-      sshHost: '10.0.0.10',
+      sshHost: '10.0.0.1',
       sshUser: 'openclaw',
-      sshKeyPath: '/root/.ssh/id_ed25519',
-      workspacePath: '/mnt/openclaw-command',
-      status: 'unknown',
-    },
-    {
-      id: 'vm-tasks',
-      name: 'Supply',
-      role: 'supply',
-      gatewayUrl: 'http://localhost:4001',
-      token: '',
-      sshHost: '10.0.0.11',
-      sshUser: 'openclaw',
-      sshKeyPath: '/root/.ssh/id_ed25519',
-      workspacePath: '/mnt/openclaw-supply',
-      status: 'unknown',
-    },
-    {
-      id: 'vm-voice',
-      name: 'Voice',
-      role: 'voice',
-      gatewayUrl: 'http://localhost:4002',
-      token: '',
-      sshHost: '10.0.0.12',
-      sshUser: 'openclaw',
-      sshKeyPath: '/root/.ssh/id_ed25519',
-      workspacePath: '/mnt/openclaw-voice',
+      sshKeyPath: '~/.ssh/id_ed25519',
+      workspacePath: '/home/openclaw/.openclaw',
       status: 'unknown',
     },
   ],

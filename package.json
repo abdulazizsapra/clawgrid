@@ -1,12 +1,22 @@
 {
-  "name": "openclaw-control-panel",
-  "version": "0.1.0",
-  "private": true,
+  "name": "clawgrid",
+  "version": "1.0.0",
+  "description": "Fleet management panel for OpenClaw AI agents — multi-instance SSH, self-improve, cost analysis, guardrails, and more",
+  "keywords": ["openclaw", "ai-agent", "fleet-management", "dashboard", "nextjs", "ssh", "cron", "self-hosted"],
+  "homepage": "https://github.com/abdulazizsapra/clawgrid",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdulazizsapra/clawgrid.git"
+  },
+  "license": "MIT",
+  "private": false,
   "scripts": {
     "dev": "next dev --turbopack -p 3000",
+    "dev:clean": "rm -rf .next && next dev --turbopack -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "next lint",
+    "clean": "rm -rf .next",
     "test": "vitest"
   },
   "dependencies": {

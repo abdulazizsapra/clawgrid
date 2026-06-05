@@ -1,6 +1,8 @@
 import { Client } from 'ssh2'
 import fs from 'fs'
 import net from 'net'
+import path from 'path'
+import os from 'os'
 import type { OpenClawInstance } from '@/types'
 
 export interface SshResult {
@@ -10,7 +12,13 @@ export interface SshResult {
 }
 
 function readKey(keyPath: string): Buffer {
-  return fs.readFileSync(keyPath)
+  const resolved = path.resolve(keyPath.replace(/^~/, os.homedir()))
+  const home = os.homedir()
+  const allowed = [home + path.sep, '/root/.ssh/', '/etc/ssh/']
+  if (!allowed.some(dir => resolved.startsWith(dir))) {
+    throw new Error('SSH key path must be within the home directory or /root/.ssh')
+  }
+  return fs.readFileSync(resolved)
 }
 
 function execOnClient(conn: Client, command: string): Promise<SshResult> {
@@ -105,10 +113,11 @@ export async function restartGateway(instance: OpenClawInstance): Promise<SshRes
   )
 }
 
-export async function getGatewayLogs(instance: OpenClawInstance, lines = 100): Promise<string> {
+export async function getGatewayLogs(instance: OpenClawInstance, lines: unknown = 100): Promise<string> {
+  const n = Math.min(Math.max(Math.floor(Number(lines)) || 100, 1), 10000)
   const result = await runSshCommand(
     instance,
-    `tail -n ${lines} "${instance.workspacePath}/gateway.log" 2>/dev/null || tail -n ${lines} ~/gateway.log 2>/dev/null || journalctl -u openclaw -n ${lines} --no-pager 2>/dev/null || echo "no logs found"`
+    `tail -n ${n} "${instance.workspacePath}/gateway.log" 2>/dev/null || tail -n ${n} ~/gateway.log 2>/dev/null || journalctl -u openclaw -n ${n} --no-pager 2>/dev/null || echo "no logs found"`
   )
   return result.stdout
 }

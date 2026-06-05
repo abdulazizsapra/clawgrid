@@ -47,17 +47,29 @@ export function InstanceSettings({ instance }: { instance: OpenClawInstance }) {
 
   async function save() {
     setSaving(true); setSaved(false)
-    await fetch('/api/instances', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-    setSaving(false); setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
-    router.refresh()
+    try {
+      const res = await fetch('/api/instances', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      if (!res.ok) throw new Error(`Save failed (${res.status})`)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+      router.refresh()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function remove() {
     if (!confirm(`Delete "${instance.name}"? This cannot be undone.`)) return
     setDeleting(true)
-    await fetch('/api/instances', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: instance.id }) })
-    router.push('/fleet')
+    try {
+      await fetch('/api/instances', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: instance.id }) })
+      router.push('/fleet')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Delete failed')
+      setDeleting(false)
+    }
   }
 
   return (
@@ -76,17 +88,17 @@ export function InstanceSettings({ instance }: { instance: OpenClawInstance }) {
       </Section>
 
       <Section title="Gateway">
-        <Field label="URL" value={form.gatewayUrl} onChange={set('gatewayUrl')} placeholder="http://localhost:4000" hint="Tunneled port on hub-server pointing to the gateway" />
-        <Field label="Bearer Token" value={form.token} onChange={set('token')} type="password" placeholder="Set in openclaw.json at gateway.auth.token" />
+        <Field label="URL" value={form.gatewayUrl} onChange={set('gatewayUrl')} placeholder="http://localhost:18789" hint="OpenClaw gateway URL — use localhost if tunneled, or the server's address for direct access" />
+        <Field label="Bearer Token" value={form.token} onChange={set('token')} type="password" placeholder="From openclaw.json → gateway.auth.token" />
       </Section>
 
       <Section title="SSH Access">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <Field label="Host" value={form.sshHost} onChange={set('sshHost')} placeholder="10.0.0.10" />
+          <Field label="Host" value={form.sshHost} onChange={set('sshHost')} placeholder="192.168.1.5 or server.example.com" />
           <Field label="User" value={form.sshUser} onChange={set('sshUser')} placeholder="openclaw" />
         </div>
-        <Field label="Private Key Path" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="/root/.ssh/id_ed25519" hint="Path on the machine running this panel (hub-server)" />
-        <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/mnt/openclaw-command" hint="SSHFS mount of the instance's ~/.openclaw directory" />
+        <Field label="Private Key Path" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="~/.ssh/clawgrid" hint="Path to a passphrase-free private key on the machine running this panel" />
+        <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/home/openclaw/.openclaw" hint="Absolute path to the .openclaw directory on the remote server" />
       </Section>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -4,9 +4,9 @@ import { Sidebar } from '@/components/layout/Sidebar'
 export default async function InstanceLayout({ children }: { children: React.ReactNode }) {
   const registry = getRegistry()
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar instances={registry.instances} />
-      <main style={{ flex: 1, overflow: 'auto', minWidth: 0 }}>{children}</main>
+      <main style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>{children}</main>
     </div>
   )
 }

@@ -18,6 +18,7 @@ interface JobState {
   lastRunAtMs?: number
   lastDurationMs?: number
   consecutiveErrors?: number
+  state?: JobState
 }
 
 interface JobRow {
@@ -173,7 +174,7 @@ export function CostDashboard({ instance }: { instance: OpenClawInstance }) {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: 'var(--surface)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--surface)' }}>
 
       {/* ── Header ── */}
       <div style={{

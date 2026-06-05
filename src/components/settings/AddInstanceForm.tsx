@@ -37,11 +37,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function AddInstanceForm() {
   const router = useRouter()
   const [form, setForm] = useState<Omit<OpenClawInstance, 'status'>>({
-    id: '', name: '', role: '',
+    id: '', name: '', role: 'command',
     gatewayUrl: 'http://localhost:4000', token: '',
-    sshHost: '', sshUser: 'openclaw',
-    sshKeyPath: '/root/.ssh/id_ed25519',
-    workspacePath: '',
+    sshHost: '', sshPort: 22, sshJumpHost: '',
+    sshUser: 'openclaw',
+    sshKeyPath: '~/.ssh/clawgrid',
+    workspacePath: '/home/openclaw/.openclaw',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -57,13 +58,20 @@ export function AddInstanceForm() {
       return
     }
     setSaving(true); setError('')
-    await fetch('/api/instances', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, status: 'unknown' }),
-    })
-    router.push(`/instances/${form.id}/chat`)
-    router.refresh()
+    try {
+      const res = await fetch('/api/instances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, status: 'unknown' }),
+      })
+      if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d.error ?? `Save failed (${res.status})`); return }
+      router.push(`/instances/${form.id}/chat`)
+      router.refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Network error — is the server running?')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -88,12 +96,16 @@ export function AddInstanceForm() {
       </Section>
 
       <Section title="SSH Access">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <Field label="Host" value={form.sshHost} onChange={set('sshHost')} placeholder="10.0.0.10" />
-          <Field label="User" value={form.sshUser} onChange={set('sshUser')} placeholder="openclaw" />
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: 14 }}>
+          <Field label="Host" value={form.sshHost} onChange={set('sshHost')} placeholder="203.0.113.10 or 10.0.0.5" required />
+          <Field label="Port" value={String(form.sshPort ?? 22)} onChange={v => setForm(f => ({ ...f, sshPort: parseInt(v) || 22 }))} placeholder="22" />
         </div>
-        <Field label="Private Key Path" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="/root/.ssh/id_ed25519" />
-        <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/mnt/openclaw-command" hint="SSHFS mount of ~/.openclaw on the worker VM" />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <Field label="SSH User" value={form.sshUser} onChange={set('sshUser')} placeholder="openclaw" />
+          <Field label="Private Key Path" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="~/.ssh/clawgrid" hint="Must be passphrase-free" />
+        </div>
+        <Field label="Jump Host (optional)" value={form.sshJumpHost ?? ''} onChange={set('sshJumpHost')} placeholder="user@bastion.example.com" hint="Leave blank for direct SSH. Use for private servers behind a bastion." />
+        <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/home/openclaw/.openclaw" hint="Path to the .openclaw directory on the server" />
       </Section>
 
       <button

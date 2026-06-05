@@ -9,6 +9,10 @@ export async function GET(
   const { instanceId } = await params
   const inst = getInstance(instanceId)
   if (!inst) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  const health = await fetchGatewayHealth(inst.gatewayUrl, inst.token)
-  return NextResponse.json(health)
+  try {
+    const health = await fetchGatewayHealth(inst.gatewayUrl, inst.token)
+    return NextResponse.json({ ...health, instanceId })
+  } catch (e) {
+    return NextResponse.json({ instanceId, status: 'offline', error: e instanceof Error ? e.message : 'unreachable' })
+  }
 }

@@ -1,17 +1,23 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, MessageSquare, Clock, Brain,
-  DollarSign, Radio, Settings, Plus, Terminal, Zap
+  DollarSign, Radio, Settings, Plus, Terminal, Zap, History, Package, Activity, Shield, Sparkles
 } from 'lucide-react'
 import type { OpenClawInstance } from '@/types'
 
 const INSTANCE_NAV = [
   { href: 'chat',     icon: MessageSquare, label: 'Chat' },
+  { href: 'sessions', icon: History,       label: 'Sessions' },
+  { href: 'health',   icon: Activity,      label: 'Health' },
+  { href: 'security', icon: Shield,        label: 'Security' },
+  { href: 'optimize', icon: Sparkles,      label: 'Self-Improve' },
   { href: 'agents',   icon: Zap,           label: 'Agents' },
   { href: 'crons',    icon: Clock,         label: 'Crons' },
+  { href: 'skills',   icon: Package,       label: 'Skills' },
   { href: 'memory',   icon: Brain,         label: 'Memory' },
   { href: 'cost',     icon: DollarSign,    label: 'Cost' },
   { href: 'channels', icon: Radio,         label: 'Channels' },
@@ -54,31 +60,17 @@ export function Sidebar({ instances }: { instances: OpenClawInstance[] }) {
     >
       {/* Logo */}
       <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 12, flexShrink: 0 }}>
-          OC
-        </div>
-        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap' }}>Control Panel</span>
+        <img src="/logo.png" alt="ClawGrid" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap' }}>ClawGrid</span>
       </div>
 
-      {/* Fleet link */}
-      <div style={{ padding: '10px 10px 4px' }}>
-        <Link
-          href="/fleet"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 10px',
-            borderRadius: 8,
-            fontSize: 13,
-            textDecoration: 'none',
-            background: pathname === '/fleet' ? 'var(--accent)' : 'transparent',
-            color: pathname === '/fleet' ? 'white' : 'var(--text-muted)',
-            transition: 'all 0.15s',
-          }}
-        >
-          <LayoutDashboard size={14} />
-          <span>Fleet Overview</span>
+      {/* Top nav links */}
+      <div style={{ padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <Link href="/fleet" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 13, textDecoration: 'none', background: pathname === '/fleet' ? 'var(--accent)' : 'transparent', color: pathname === '/fleet' ? 'white' : 'var(--text-muted)', transition: 'all 0.15s' }}>
+          <LayoutDashboard size={14} /><span>Fleet Overview</span>
+        </Link>
+        <Link href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 13, textDecoration: 'none', background: pathname === '/settings' ? 'var(--accent-dim)' : 'transparent', color: pathname === '/settings' ? 'var(--accent)' : 'var(--text-dim)', transition: 'all 0.15s' }}>
+          <Settings size={14} /><span>Panel Settings</span>
         </Link>
       </div>
 
@@ -170,6 +162,49 @@ export function Sidebar({ instances }: { instances: OpenClawInstance[] }) {
           <span>Add instance</span>
         </Link>
       </div>
+
+      {/* Logout — only shown when auth is enabled */}
+      <LogoutButton />
     </aside>
+  )
+}
+
+function LogoutButton() {
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    // Check if auth is active by pinging the login page
+    fetch('/api/auth/status')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.authEnabled) setVisible(true) })
+      .catch(() => {})
+  }, [])
+
+  if (!visible) return null
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  }
+
+  return (
+    <div style={{ padding: '10px 10px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+      <button
+        onClick={logout}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '7px 10px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
+          background: 'transparent', border: 'none', color: 'var(--text-dim)',
+          textAlign: 'left',
+        }}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Sign out</span>
+      </button>
+    </div>
   )
 }
