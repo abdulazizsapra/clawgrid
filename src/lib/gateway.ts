@@ -26,7 +26,7 @@ export async function* streamChat(
   gatewayUrl: string,
   token: string,
   messages: { role: string; content: string }[],
-  model = 'claude-sonnet-4-6'
+  model = 'openclaw'
 ): AsyncGenerator<string> {
   const res = await fetch(`${gatewayUrl}/v1/chat/completions`, {
     method: 'POST',

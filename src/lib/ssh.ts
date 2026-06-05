@@ -108,7 +108,7 @@ export async function restartGateway(instance: OpenClawInstance): Promise<SshRes
 export async function getGatewayLogs(instance: OpenClawInstance, lines = 100): Promise<string> {
   const result = await runSshCommand(
     instance,
-    `tail -n ${lines} ~/gateway.log 2>/dev/null || journalctl -u openclaw -n ${lines} --no-pager 2>/dev/null || echo "no logs found"`
+    `tail -n ${lines} "${instance.workspacePath}/gateway.log" 2>/dev/null || tail -n ${lines} ~/gateway.log 2>/dev/null || journalctl -u openclaw -n ${lines} --no-pager 2>/dev/null || echo "no logs found"`
   )
   return result.stdout
 }
