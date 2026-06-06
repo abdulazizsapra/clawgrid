@@ -4,7 +4,9 @@ export const COOKIE_NAME = 'oc_panel_session'
 export const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
 function secret(): string {
-  return process.env.PANEL_SECRET || 'openclaw-panel-dev-secret'
+  const s = process.env.PANEL_SECRET
+  if (!s) throw new Error('PANEL_SECRET env var is not set')
+  return s
 }
 
 export function getPassword(): string {

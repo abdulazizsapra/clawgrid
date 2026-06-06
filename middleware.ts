@@ -4,7 +4,9 @@ import { createHmac, timingSafeEqual } from 'crypto'
 const COOKIE_NAME = 'oc_panel_session'
 
 function secret(): string {
-  return process.env.PANEL_SECRET || 'openclaw-panel-dev-secret'
+  const s = process.env.PANEL_SECRET
+  if (!s) throw new Error('PANEL_SECRET env var is not set')
+  return s
 }
 
 function verifyToken(token: string): boolean {
