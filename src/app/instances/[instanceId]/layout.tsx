@@ -6,7 +6,7 @@ export default async function InstanceLayout({ children }: { children: React.Rea
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar instances={registry.instances} />
-      <main style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>{children}</main>
+      <main className="mobile-main" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>{children}</main>
     </div>
   )
 }

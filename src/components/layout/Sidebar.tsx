@@ -2,10 +2,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, MessageSquare, Clock, Brain,
-  DollarSign, Radio, Settings, Plus, Terminal, Zap, History, Package, Activity, Shield, Sparkles
+  DollarSign, Radio, Settings, Plus, Terminal, Zap, History, Package, Activity, Shield, Sparkles, Menu, X
 } from 'lucide-react'
 import type { OpenClawInstance } from '@/types'
 
@@ -40,132 +39,165 @@ const STATUS_DOT: Record<string, string> = {
 
 export function Sidebar({ instances }: { instances: OpenClawInstance[] }) {
   const pathname = usePathname()
+  const [isOpen, setIsOpen] = useState(false)
   const activeInstance = instances.find(i => pathname.includes(`/instances/${i.id}`))
 
+  // Close drawer on route change
+  useEffect(() => { setIsOpen(false) }, [pathname])
+
+  // Prevent body scroll when drawer is open on mobile
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden'
+    else document.body.style.overflow = ''
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
+  const activeLabel = pathname === '/fleet' ? 'Fleet Overview'
+    : pathname === '/settings' ? 'Panel Settings'
+    : pathname.startsWith('/instances/new') ? 'Add Instance'
+    : activeInstance
+      ? (INSTANCE_NAV.find(n => pathname.endsWith(`/${n.href}`))?.label ?? activeInstance.name)
+      : 'ClawGrid'
+
   return (
-    <aside
-      style={{
-        width: '220px',
-        minWidth: '220px',
-        maxWidth: '220px',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--surface)',
-        borderRight: '1px solid var(--border)',
-        height: '100vh',
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        flexShrink: 0,
-      }}
-    >
-      {/* Logo */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <img src="/logo.png" alt="ClawGrid" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
-        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap' }}>ClawGrid</span>
-      </div>
-
-      {/* Top nav links */}
-      <div style={{ padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <Link href="/fleet" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 13, textDecoration: 'none', background: pathname === '/fleet' ? 'var(--accent)' : 'transparent', color: pathname === '/fleet' ? 'white' : 'var(--text-muted)', transition: 'all 0.15s' }}>
-          <LayoutDashboard size={14} /><span>Fleet Overview</span>
-        </Link>
-        <Link href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 13, textDecoration: 'none', background: pathname === '/settings' ? 'var(--accent-dim)' : 'transparent', color: pathname === '/settings' ? 'var(--accent)' : 'var(--text-dim)', transition: 'all 0.15s' }}>
-          <Settings size={14} /><span>Panel Settings</span>
-        </Link>
-      </div>
-
-      {/* Instances */}
-      <div style={{ padding: '4px 10px 10px', flex: 1 }}>
-        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', padding: '8px 10px 6px', textTransform: 'uppercase' }}>
-          Instances
-        </p>
-
-        {instances.map(inst => {
-          const isActive = activeInstance?.id === inst.id
-          const roleStyle = ROLE_COLORS[inst.role]
-          const dotColor = STATUS_DOT[inst.status] ?? STATUS_DOT.unknown
-
-          return (
-            <div key={inst.id} style={{ marginBottom: 2 }}>
-              <Link
-                href={`/instances/${inst.id}/chat`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '7px 10px',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                  background: isActive ? 'var(--surface3)' : 'transparent',
-                  transition: 'background 0.15s',
-                  overflow: 'hidden',
-                }}
-              >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, color: isActive ? 'var(--text)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {inst.name}
-                </span>
-                {roleStyle && (
-                  <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: roleStyle.bg, color: roleStyle.text, flexShrink: 0, fontWeight: 500 }}>
-                    {inst.role.slice(0, 3)}
-                  </span>
-                )}
-              </Link>
-
-              {isActive && (
-                <div style={{ marginLeft: 12, marginTop: 2, marginBottom: 4 }}>
-                  {INSTANCE_NAV.map(nav => {
-                    const active = pathname.endsWith(`/${nav.href}`)
-                    return (
-                      <Link
-                        key={nav.href}
-                        href={`/instances/${inst.id}/${nav.href}`}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 7,
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          fontSize: 12,
-                          textDecoration: 'none',
-                          color: active ? 'var(--accent)' : 'var(--text-muted)',
-                          background: active ? 'var(--accent-dim)' : 'transparent',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <nav.icon size={12} />
-                        <span>{nav.label}</span>
-                      </Link>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        <Link
-          href="/instances/new"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '7px 10px',
-            borderRadius: 8,
-            fontSize: 12,
-            textDecoration: 'none',
-            color: 'var(--text-dim)',
-            marginTop: 4,
-          }}
+    <>
+      {/* ── Mobile top bar ─────────────────────────────────── */}
+      <div className="mobile-bar">
+        <button
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface2)', color: 'var(--text-muted)', flexShrink: 0 }}
         >
-          <Plus size={12} />
-          <span>Add instance</span>
-        </Link>
+          <Menu size={18} />
+        </button>
+        <img src="/logo.png" alt="ClawGrid" style={{ width: 26, height: 26, borderRadius: 7, objectFit: 'cover', flexShrink: 0 }} />
+        <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {activeLabel}
+        </span>
       </div>
 
-      {/* Logout — only shown when auth is enabled */}
-      <LogoutButton />
-    </aside>
+      {/* ── Backdrop ───────────────────────────────────────── */}
+      <div className={`sidebar-backdrop${isOpen ? ' is-open' : ''}`} onClick={() => setIsOpen(false)} />
+
+      {/* ── Sidebar ────────────────────────────────────────── */}
+      <aside
+        className={`sidebar-el${isOpen ? ' is-open' : ''}`}
+        style={{
+          width: '220px',
+          minWidth: '220px',
+          maxWidth: '220px',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--surface)',
+          borderRight: '1px solid var(--border)',
+          height: '100vh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          flexShrink: 0,
+        }}
+      >
+        {/* Logo row */}
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <img src="/logo.png" alt="ClawGrid" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }} />
+          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap', flex: 1 }}>ClawGrid</span>
+          {/* Close button — only visible on mobile via CSS */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="sidebar-close-btn"
+            aria-label="Close menu"
+            style={{ alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: 'var(--surface2)', color: 'var(--text-muted)', cursor: 'pointer', flexShrink: 0 }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Top nav */}
+        <div style={{ padding: '10px 10px 4px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Link href="/fleet" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 13, textDecoration: 'none', background: pathname === '/fleet' ? 'var(--accent)' : 'transparent', color: pathname === '/fleet' ? 'white' : 'var(--text-muted)', transition: 'all 0.15s' }}>
+            <LayoutDashboard size={14} /><span>Fleet Overview</span>
+          </Link>
+          <Link href="/settings" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, fontSize: 13, textDecoration: 'none', background: pathname === '/settings' ? 'var(--accent-dim)' : 'transparent', color: pathname === '/settings' ? 'var(--accent)' : 'var(--text-dim)', transition: 'all 0.15s' }}>
+            <Settings size={14} /><span>Panel Settings</span>
+          </Link>
+        </div>
+
+        {/* Instances */}
+        <div style={{ padding: '4px 10px 10px', flex: 1, overflowY: 'auto' }}>
+          <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', color: 'var(--text-dim)', padding: '8px 10px 6px', textTransform: 'uppercase' }}>
+            Instances
+          </p>
+
+          {instances.map(inst => {
+            const isActive = activeInstance?.id === inst.id
+            const roleStyle = ROLE_COLORS[inst.role]
+            const dotColor = STATUS_DOT[inst.status] ?? STATUS_DOT.unknown
+
+            return (
+              <div key={inst.id} style={{ marginBottom: 2 }}>
+                <Link
+                  href={`/instances/${inst.id}/chat`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '7px 10px', borderRadius: 8, textDecoration: 'none',
+                    background: isActive ? 'var(--surface3)' : 'transparent',
+                    transition: 'background 0.15s', overflow: 'hidden',
+                  }}
+                >
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: 13, color: isActive ? 'var(--text)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {inst.name}
+                  </span>
+                  {roleStyle && (
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: roleStyle.bg, color: roleStyle.text, flexShrink: 0, fontWeight: 500 }}>
+                      {inst.role.slice(0, 3)}
+                    </span>
+                  )}
+                </Link>
+
+                {isActive && (
+                  <div style={{ marginLeft: 12, marginTop: 2, marginBottom: 4 }}>
+                    {INSTANCE_NAV.map(nav => {
+                      const active = pathname.endsWith(`/${nav.href}`)
+                      return (
+                        <Link
+                          key={nav.href}
+                          href={`/instances/${inst.id}/${nav.href}`}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 7,
+                            padding: '6px 10px', borderRadius: 6, fontSize: 12,
+                            textDecoration: 'none',
+                            color: active ? 'var(--accent)' : 'var(--text-muted)',
+                            background: active ? 'var(--accent-dim)' : 'transparent',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <nav.icon size={12} />
+                          <span>{nav.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          <Link
+            href="/instances/new"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 10px', borderRadius: 8, fontSize: 12,
+              textDecoration: 'none', color: 'var(--text-dim)', marginTop: 4,
+            }}
+          >
+            <Plus size={12} />
+            <span>Add instance</span>
+          </Link>
+        </div>
+
+        <LogoutButton />
+      </aside>
+    </>
   )
 }
 
@@ -173,7 +205,6 @@ function LogoutButton() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    // Check if auth is active by pinging the login page
     fetch('/api/auth/status')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.authEnabled) setVisible(true) })
@@ -194,8 +225,7 @@ function LogoutButton() {
         style={{
           display: 'flex', alignItems: 'center', gap: 8, width: '100%',
           padding: '7px 10px', borderRadius: 8, fontSize: 12, cursor: 'pointer',
-          background: 'transparent', border: 'none', color: 'var(--text-dim)',
-          textAlign: 'left',
+          background: 'transparent', border: 'none', color: 'var(--text-dim)', textAlign: 'left',
         }}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -36,9 +36,9 @@ export default async function FleetPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar instances={instancesWithData} />
-      <main style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
+      <main className="mobile-main" style={{ flex: 1, overflowY: 'auto', minWidth: 0 }}>
         {/* Page header */}
-        <div style={{ padding: '24px 28px 0' }}>
+        <div className="rph" style={{ padding: '24px 28px 0' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -59,7 +59,7 @@ export default async function FleetPage() {
           </div>
 
           {/* Fleet-level summary KPIs */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 28 }}>
+          <div className="r-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10, marginBottom: 28 }}>
             {[
               { label: 'Instances Online', value: `${online} / ${registry.instances.length}`, color: online === registry.instances.length ? 'var(--success)' : online > 0 ? 'var(--warning)' : 'var(--error)' },
               { label: 'Cron Jobs', value: String(totalCrons), color: 'var(--accent)' },
@@ -75,7 +75,7 @@ export default async function FleetPage() {
         </div>
 
         {/* Instance cards */}
-        <div style={{ padding: '0 28px 28px' }}>
+        <div className="rp" style={{ padding: '0 28px 28px' }}>
           <FleetGrid instances={instancesWithData} />
         </div>
       </main>

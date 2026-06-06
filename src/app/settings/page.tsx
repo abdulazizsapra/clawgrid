@@ -7,7 +7,7 @@ export default function PanelSettingsPage() {
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar instances={registry.instances} />
-      <main style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+      <main className="mobile-main" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
         <PanelSettings />
       </main>
     </div>

@@ -60,6 +60,92 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 
 code { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9em; }
 
+/* ─── Mobile responsive layout ────────────────────────────────── */
+
+/* Sidebar backdrop — hidden on desktop */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 49;
+  cursor: pointer;
+  animation: fadeInBackdrop 0.2s ease;
+}
+.sidebar-backdrop.is-open { display: block; }
+
+/* Mobile top bar — hidden on desktop */
+.mobile-bar { display: none; }
+
+/* Sidebar close button — hidden on desktop */
+.sidebar-close-btn { display: none; }
+
+@keyframes fadeInBackdrop { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 768px) {
+  /* Sidebar becomes a slide-over drawer */
+  .sidebar-el {
+    position: fixed !important;
+    left: 0 !important; top: 0 !important; bottom: 0 !important;
+    width: 260px !important; min-width: 260px !important; max-width: 260px !important;
+    height: 100dvh !important;
+    z-index: 50;
+    transform: translateX(-260px);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 8px 0 48px rgba(0,0,0,0.6);
+  }
+  .sidebar-el.is-open { transform: translateX(0); }
+
+  /* Mobile top bar */
+  .mobile-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 52px;
+    min-height: 52px;
+    padding: 0 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  /* Show close button inside drawer */
+  .sidebar-close-btn { display: flex; }
+
+  /* Main content: push down for topbar, enable scroll */
+  .mobile-main {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: 100vh !important;
+  }
+  .mobile-main > * { flex-shrink: 0; }
+  .mobile-main > :last-child { flex: 1; overflow-y: auto; }
+
+  /* Responsive page padding helpers */
+  .rp  { padding: 14px !important; }
+  .rph { padding: 14px 14px 0 !important; }
+
+  /* Responsive grids: single column below 480px */
+  .r-grid { grid-template-columns: 1fr !important; }
+  .r-grid-2 { grid-template-columns: 1fr 1fr !important; }
+}
+
+@media (max-width: 480px) {
+  .sidebar-el {
+    width: 88vw !important;
+    max-width: 88vw !important;
+    transform: translateX(-88vw);
+  }
+  .r-grid-2 { grid-template-columns: 1fr !important; }
+  .rp  { padding: 12px !important; }
+  .rph { padding: 12px 12px 0 !important; }
+}
+
 .animate-spin { animation: spin 1s linear infinite; }
 .animate-bounce { animation: bounce 1s infinite; }
 .animate-pulse { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
