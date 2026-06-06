@@ -176,15 +176,17 @@ print(json.dumps(list(seen.values())))
     setContentLoading(true)
     try {
       const memDir = `${instance.workspacePath}/memory`
+      const safePath = path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
       const py = `python3 -c "
 import sqlite3, json, os
+path_val = '${safePath}'
 dbs = ['${memDir}/main.sqlite', '${memDir}/command.sqlite']
 chunks = []
 for db in dbs:
     if not os.path.exists(db): continue
     try:
         conn = sqlite3.connect(db)
-        rows = conn.execute('SELECT text, start_line FROM chunks WHERE path=? ORDER BY start_line', ('${path}',)).fetchall()
+        rows = conn.execute('SELECT text, start_line FROM chunks WHERE path=? ORDER BY start_line', (path_val,)).fetchall()
         chunks.extend(rows)
         conn.close()
     except: pass

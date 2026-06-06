@@ -29,8 +29,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (instance.sshKeyPath && typeof instance.sshKeyPath === 'string') {
-    if (instance.sshKeyPath.includes('..')) {
-      return NextResponse.json({ error: 'sshKeyPath must not contain ..' }, { status: 400 })
+    if (instance.sshKeyPath.includes('..') || /["';`$\\]/.test(instance.sshKeyPath)) {
+      return NextResponse.json({ error: 'sshKeyPath must not contain .. or special characters' }, { status: 400 })
     }
   }
 
