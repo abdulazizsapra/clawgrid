@@ -1,8 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { Save, Trash2, CheckCircle } from 'lucide-react'
+import { Save, Trash2, CheckCircle, Cpu, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { OpenClawInstance } from '@/types'
+import { ModelPicker, MODELS } from '@/components/models/ModelPicker'
 
 function Field({
   label, value, onChange, type = 'text', placeholder, hint,
@@ -99,6 +100,63 @@ export function InstanceSettings({ instance }: { instance: OpenClawInstance }) {
         </div>
         <Field label="Private Key Path" value={form.sshKeyPath} onChange={set('sshKeyPath')} placeholder="~/.ssh/clawgrid" hint="Path to a passphrase-free private key on the machine running this panel" />
         <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/home/openclaw/.openclaw" hint="Absolute path to the .openclaw directory on the remote server" />
+      </Section>
+
+      <Section title="Model Routing">
+        <div>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 8 }}>
+            Default Model
+          </label>
+          <ModelPicker
+            value={form.defaultModel ?? ''}
+            onChange={v => setForm(f => ({ ...f, defaultModel: v || undefined }))}
+          />
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
+            Injected into every chat request for this instance. Requires OpenRouter configured in the agent's <code style={{ fontSize: 11, fontFamily: 'monospace' }}>openclaw.json</code>. Leave blank to use the gateway's built-in default.
+          </p>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 8 }}>
+            Fallback Models <span style={{ fontWeight: 400, opacity: 0.7 }}>(optional — comma-separated OpenRouter IDs)</span>
+          </label>
+          <input
+            type="text"
+            value={(form.modelFallbacks ?? []).join(', ')}
+            onChange={e => {
+              const parts = e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+              setForm(f => ({ ...f, modelFallbacks: parts.length ? parts : undefined }))
+            }}
+            placeholder="openrouter/anthropic/claude-haiku-4-5, openrouter/openai/gpt-4o-mini"
+          />
+          <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
+            If the primary model fails or rate-limits, OpenRouter automatically tries these in order.
+          </p>
+        </div>
+
+        {/* Cost reference */}
+        {form.defaultModel && (() => {
+          const m = MODELS.find(x => x.id === form.defaultModel)
+          if (!m) return null
+          return (
+            <div style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 9, padding: '10px 14px', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Context:</span> {m.contextK}K tokens
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Input:</span> ${m.inputPer1M}/1M
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Output:</span> ${m.outputPer1M}/1M
+              </div>
+              {!m.supportsTools && (
+                <div style={{ fontSize: 11, color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Info size={11} /> No tool use — may break agent behaviors
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </Section>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -11,6 +11,21 @@ export async function POST(
 
   const body = await req.json()
 
+  // Apply instance-level model routing: inject defaultModel unless the caller
+  // already sent a specific non-default model (not 'openclaw' placeholder)
+  const callerModel: string = body.model ?? ''
+  const isPlaceholder = !callerModel || callerModel === 'openclaw'
+  if (isPlaceholder && inst.defaultModel) {
+    body.model = inst.defaultModel
+    // Attach fallback chain if configured (OpenRouter extra_body)
+    if (inst.modelFallbacks?.length) {
+      body.extra_body = {
+        ...(body.extra_body ?? {}),
+        models: [inst.defaultModel, ...inst.modelFallbacks],
+      }
+    }
+  }
+
   let upstreamRes: Response
   try {
     upstreamRes = await fetch(`${inst.gatewayUrl}/v1/chat/completions`, {

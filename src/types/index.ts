@@ -15,6 +15,9 @@ export interface OpenClawInstance {
   status: InstanceStatus
   version?: string
   lastSeen?: string
+  // Model routing
+  defaultModel?: string       // e.g. "openrouter/anthropic/claude-sonnet-4-6"
+  modelFallbacks?: string[]   // fallback chain if primary fails
 }
 
 export interface InstanceRegistry {

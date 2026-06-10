@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { uuid } from '@/lib/utils'
 import type { OpenClawInstance, ChatMessage } from '@/types'
+import { ModelPicker, MODELS } from '@/components/models/ModelPicker'
 
 // ─── Keyframes ────────────────────────────────────────────────────────────────
 const STYLE = `
@@ -289,6 +290,9 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
   const [systemPrompt, setSystemPrompt] = useState('')
   const [showSystem, setShowSystem] = useState(false)
   const [clearHover, setClearHover] = useState(false)
+  // Per-conversation model override (falls back to instance.defaultModel)
+  const [activeModel, setActiveModel] = useState<string>(instance.defaultModel ?? '')
+  const [lastUsedModel, setLastUsedModel] = useState<string>('')  // from SSE response
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -363,7 +367,7 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
       const res = await fetch(`/api/gateway/${instance.id}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'openclaw', messages: apiMessages, stream: true }),
+        body: JSON.stringify({ model: activeModel || 'openclaw', messages: apiMessages, stream: true }),
         signal: abort.signal,
       })
 
@@ -392,6 +396,7 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
           if (data === '[DONE]') { reader.cancel(); break }
           try {
             const chunk = JSON.parse(data)
+            if (chunk.model) setLastUsedModel(chunk.model)
             const delta = chunk.choices?.[0]?.delta?.content
             if (delta) {
               assembled += delta
@@ -480,6 +485,22 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+          {/* Model picker */}
+          <ModelPicker
+            value={activeModel}
+            onChange={setActiveModel}
+            size="compact"
+            showDetails={false}
+          />
+          {/* Show which model actually ran (from SSE response) */}
+          {lastUsedModel && lastUsedModel !== activeModel && (() => {
+            const short = MODELS.find(m => m.id === `openrouter/${lastUsedModel}`)?.label ?? lastUsedModel.split('/').pop() ?? lastUsedModel
+            return (
+              <span title={`OpenRouter routed to: ${lastUsedModel}`} style={{ fontSize: 10, padding: '2px 7px', borderRadius: 6, background: 'rgba(167,139,250,0.1)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.2)', whiteSpace: 'nowrap' }}>
+                → {short}
+              </span>
+            )
+          })()}
           {/* System prompt toggle */}
           <button
             onClick={() => setShowSystem(s => !s)}
