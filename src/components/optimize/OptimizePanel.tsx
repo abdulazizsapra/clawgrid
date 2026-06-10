@@ -7,6 +7,7 @@ import {
   ArrowRight, X, Bot, Copy, Check, SendHorizonal
 } from 'lucide-react'
 import type { OpenClawInstance } from '@/types'
+import { SelfEvolutionSetup } from './SelfEvolutionSetup'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -920,6 +921,7 @@ export function OptimizePanel({ instance }: { instance: OpenClawInstance }) {
     logs: { status: 'idle' }, security: { status: 'idle' }, skills: { status: 'idle' },
   })
   const [showAgent, setShowAgent] = useState(false)
+  const [showEvolution, setShowEvolution] = useState(false)
   const [runningAll, setRunningAll] = useState(false)
   const [actionTarget, setActionTarget] = useState<Finding | null>(null)
 
@@ -971,7 +973,13 @@ export function OptimizePanel({ instance }: { instance: OpenClawInstance }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setShowEvolution(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(167,139,250,0.35)', background: 'rgba(167,139,250,0.08)', color: '#a78bfa', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            <Brain size={14} /> Setup Self Evolution
+          </button>
           <button
             onClick={() => setShowAgent(true)}
             style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 9, border: '1px solid rgba(59,130,246,0.3)', background: 'var(--accent-dim)', color: 'var(--accent)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
@@ -1045,6 +1053,7 @@ export function OptimizePanel({ instance }: { instance: OpenClawInstance }) {
 
       {showAgent && <AgentAnalysisPanel instance={instance} onClose={() => setShowAgent(false)} />}
       {actionTarget && <ActionModal instance={instance} finding={actionTarget} onClose={() => setActionTarget(null)} />}
+      {showEvolution && <SelfEvolutionSetup instance={instance} onClose={() => setShowEvolution(false)} />}
     </div>
   )
 }
