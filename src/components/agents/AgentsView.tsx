@@ -63,7 +63,12 @@ def parse_sessions(agent_dir):
     if not sess_dir.exists():
         return sessions_data
     try:
-        files = sorted(sess_dir.glob('*.jsonl'), key=lambda f: f.stat().st_mtime)
+        files = sorted(
+            [f for f in sess_dir.glob('*.jsonl')
+             if not f.name.endswith('.trajectory.jsonl')
+             and '.trajectory-path' not in f.name],
+            key=lambda f: f.stat().st_mtime
+        )
     except Exception:
         return sessions_data
     for sf in files:
@@ -161,6 +166,62 @@ try:
                     'created_at': '', 'last_active': '', 'last_task': '',
                     'name': d.name.replace('-', ' ').title(), 'role': 'task',
                 })
+
+    subagents_file = wp / 'subagents' / 'runs.json'
+    if subagents_file.exists():
+        try:
+            runs_data = json.loads(subagents_file.read_text(errors='replace'))
+            runs = runs_data.get('runs', {})
+            now_sec = datetime.now(timezone.utc).timestamp()
+            for run_id, run in runs.items():
+                if run_id in seen:
+                    continue
+                ctrl_key = run.get('controllerSessionKey', '')
+                parts = ctrl_key.split(':')
+                parent_id = parts[1] if len(parts) >= 2 else None
+                created_ms = run.get('createdAt') or run.get('startedAt') or 0
+                ended_ms = run.get('endedAt') or 0
+                def ms_to_iso(ms):
+                    if not ms: return ''
+                    try: return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
+                    except: return ''
+                created_at = ms_to_iso(created_ms)
+                ended_at   = ms_to_iso(ended_ms)
+                is_active = (not ended_ms) or (now_sec - ended_ms / 1000) < 1800
+                label = run.get('label', '')
+                task  = run.get('task', '')
+                if label:
+                    name = label
+                elif task:
+                    first_line = task.split('\\n')[0].strip()
+                    name = first_line[:50] if first_line else run_id[:8]
+                else:
+                    name = run_id[:8]
+                virtual_mtime = (ended_ms or created_ms) / 1000
+                virtual_sess = {
+                    'id': run_id,
+                    'mtime': virtual_mtime,
+                    'msg_count': 0,
+                    'first_ts': created_at,
+                    'last_ts': ended_at or created_at,
+                    'task': task[:250],
+                }
+                results.append({
+                    'id': run_id,
+                    'is_active': is_active,
+                    'parent_id': parent_id,
+                    'description': 'subagent run',
+                    'session_count': 1,
+                    'sessions': [virtual_sess],
+                    'created_at': created_at,
+                    'last_active': ended_at or created_at,
+                    'last_task': task[:250],
+                    'name': name,
+                    'role': 'subagent',
+                })
+                seen.add(run_id)
+        except Exception as e:
+            pass
 
     cfg_file = wp / 'openclaw.json'
     if cfg_file.exists():
@@ -753,7 +814,7 @@ export function AgentsView({ instance }: { instance: OpenClawInstance }) {
               <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
                 <Zap size={36} style={{ display: 'block', margin: '0 auto 12px', opacity: 0.2 }} />
                 <p style={{ fontSize: 14, margin: '0 0 6px', color: 'var(--text)' }}>No agents found</p>
-                <p style={{ fontSize: 12, margin: 0 }}>Scanned {instance.workspacePath}/agents/ and tasks/</p>
+                <p style={{ fontSize: 12, margin: 0 }}>Scanned {instance.workspacePath}/agents/, tasks/, and subagents/runs.json</p>
               </div>
             )}
 

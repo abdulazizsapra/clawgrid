@@ -1,5 +1,5 @@
 'use client'
-import { sshExec } from '@/lib/utils'
+import { sshExec, uuid } from '@/lib/utils'
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, Play, Pause, AlertCircle, CheckCircle, Clock, Timer, Plus, Trash2, Edit2, X, ChevronRight, CalendarDays, List, RotateCcw, ChevronsDown, ChevronsUp, ArrowUpDown } from 'lucide-react'
 import type { OpenClawInstance } from '@/types'
@@ -1003,7 +1003,7 @@ print('ok')
   }
 
   function openNew() {
-    setEditForm({ ...BLANK_FORM, id: crypto.randomUUID() })
+    setEditForm({ ...BLANK_FORM, id: uuid() })
   }
 
   function openEdit(job: CronJob) {
