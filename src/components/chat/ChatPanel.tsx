@@ -349,9 +349,13 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
     const abort = new AbortController()
     abortRef.current = abort
 
+    // Send at most the last 20 messages. The gateway caches thinking-block
+    // signatures internally; replaying older turns risks sending stale signatures
+    // that Anthropic rejects with "Invalid signature in thinking block".
+    const recentHistory = history.slice(-20)
     const apiMessages = [
       ...(systemPrompt.trim() ? [{ role: 'system', content: systemPrompt.trim() }] : []),
-      ...history.map(m => ({ role: m.role, content: m.content })),
+      ...recentHistory.map(m => ({ role: m.role, content: m.content })),
     ]
 
     try {
