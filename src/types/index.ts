@@ -18,6 +18,8 @@ export interface OpenClawInstance {
   // Model routing
   defaultModel?: string       // e.g. "openrouter/anthropic/claude-sonnet-4-6"
   modelFallbacks?: string[]   // fallback chain if primary fails
+  // Chat attachments
+  allowedAttachmentKinds?: ('images' | 'code' | 'data' | 'text')[]  // defaults to all
 }
 
 export interface InstanceRegistry {

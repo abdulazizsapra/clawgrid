@@ -4,6 +4,7 @@ import { Save, Trash2, CheckCircle, Cpu, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { OpenClawInstance } from '@/types'
 import { ModelPicker, MODELS } from '@/components/models/ModelPicker'
+import { OpenRouterSetup } from './OpenRouterSetup'
 
 function Field({
   label, value, onChange, type = 'text', placeholder, hint,
@@ -102,6 +103,10 @@ export function InstanceSettings({ instance }: { instance: OpenClawInstance }) {
         <Field label="Workspace Path" value={form.workspacePath} onChange={set('workspacePath')} placeholder="/home/openclaw/.openclaw" hint="Absolute path to the .openclaw directory on the remote server" />
       </Section>
 
+      <Section title="OpenRouter">
+        <OpenRouterSetup instance={instance} />
+      </Section>
+
       <Section title="Model Routing">
         <div>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 8 }}>
@@ -157,6 +162,40 @@ export function InstanceSettings({ instance }: { instance: OpenClawInstance }) {
             </div>
           )
         })()}
+      </Section>
+
+      <Section title="Chat Attachments">
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 4px' }}>
+          Choose which file categories users can attach in chat for this instance.
+        </p>
+        {(
+          [
+            { key: 'images' as const, label: 'Images', ext: 'PNG · JPG · GIF · WebP · SVG' },
+            { key: 'code'   as const, label: 'Code',   ext: 'TS · JS · PY · SH · GO · RS · Java …' },
+            { key: 'data'   as const, label: 'Data',   ext: 'JSON · CSV · YAML · XML · SQL · TOML' },
+            { key: 'text'   as const, label: 'Documents', ext: 'TXT · MD · HTML · CSS · LOG · ENV' },
+          ] as { key: 'images'|'code'|'data'|'text'; label: string; ext: string }[]
+        ).map(({ key, label, ext }) => {
+          const all = form.allowedAttachmentKinds ?? ['images','code','data','text']
+          const enabled = all.includes(key)
+          return (
+            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={() => {
+                  const current: ('images'|'code'|'data'|'text')[] = form.allowedAttachmentKinds ?? ['images','code','data','text']
+                  const next = enabled ? current.filter(k => k !== key) : [...current, key]
+                  setForm(f => ({ ...f, allowedAttachmentKinds: next.length === 4 ? undefined : next }))
+                }}
+              />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{label}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{ext}</div>
+              </div>
+            </label>
+          )
+        })}
       </Section>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -51,10 +51,33 @@ interface Attachment {
   content: string  // data URL for images, raw text for text files
 }
 
-const TEXT_EXTS = new Set(['txt','md','ts','tsx','js','jsx','json','py','sh','bash','sql','csv','yaml','yml','toml','xml','html','css','rs','go','java','kt','rb','php','c','cpp','h','hpp','swift','vue','svelte','env','log'])
+const EXTS_BY_KIND = {
+  images: [] as string[],  // handled via MIME type
+  code:  ['ts','tsx','js','jsx','py','sh','bash','rs','go','java','kt','rb','php','c','cpp','h','hpp','swift','vue','svelte'],
+  data:  ['json','csv','yaml','yml','toml','xml','sql'],
+  text:  ['txt','md','html','css','log','env'],
+} as const
+
+const TEXT_EXTS = new Set<string>([
+  ...EXTS_BY_KIND.code,
+  ...EXTS_BY_KIND.data,
+  ...EXTS_BY_KIND.text,
+])
 
 function isTextFile(f: File): boolean {
   return f.type.startsWith('text/') || TEXT_EXTS.has(f.name.split('.').pop()?.toLowerCase() ?? '')
+}
+
+function buildAccept(kinds: ('images'|'code'|'data'|'text')[]): string {
+  const parts: string[] = []
+  if (kinds.includes('images')) parts.push('image/png','image/jpeg','image/gif','image/webp','image/svg+xml')
+  const exts = ([] as string[]).concat(
+    kinds.includes('code') ? EXTS_BY_KIND.code : [],
+    kinds.includes('data') ? EXTS_BY_KIND.data : [],
+    kinds.includes('text') ? EXTS_BY_KIND.text : [],
+  )
+  exts.forEach(e => parts.push(`.${e}`))
+  return parts.join(',')
 }
 
 function readFile(f: File): Promise<Attachment> {
@@ -541,14 +564,22 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
     try { localStorage.setItem(`chat:${instance.id}:system`, val) } catch { /* ignore */ }
   }
 
+  const allowedKinds: ('images'|'code'|'data'|'text')[] = instance.allowedAttachmentKinds ?? ['images','code','data','text']
+
   async function handleFiles(files: FileList | File[]) {
     const arr = Array.from(files)
     const allowed = arr.filter(f => {
+      const ext = f.name.split('.').pop()?.toLowerCase() ?? ''
       if (f.type.startsWith('image/')) {
+        if (!allowedKinds.includes('images')) return false
         if (f.size > 5 * 1024 * 1024) { alert(`${f.name} exceeds 5MB limit`); return false }
         return true
       }
       if (isTextFile(f)) {
+        const kind = (EXTS_BY_KIND.code as readonly string[]).includes(ext) ? 'code'
+          : (EXTS_BY_KIND.data as readonly string[]).includes(ext) ? 'data'
+          : 'text'
+        if (!allowedKinds.includes(kind)) return false
         if (f.size > 200 * 1024) { alert(`${f.name} exceeds 200KB limit`); return false }
         return true
       }
@@ -706,7 +737,7 @@ export function ChatPanel({ instance }: { instance: OpenClawInstance }) {
           ref={fileInputRef}
           type="file"
           multiple
-          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,text/plain,text/markdown,.md,.txt,.ts,.tsx,.js,.jsx,.json,.py,.sh,.sql,.csv,.yaml,.yml,.toml,.xml,.html,.css,.rs,.go,.java,.kt,.rb,.php,.c,.cpp,.h,.env,.log"
+          accept={buildAccept(allowedKinds)}
           style={{ display: 'none' }}
           onChange={e => { if (e.target.files) { handleFiles(e.target.files); e.target.value = '' } }}
         />
