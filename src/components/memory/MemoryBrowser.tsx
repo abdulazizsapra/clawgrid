@@ -176,11 +176,14 @@ print(json.dumps(list(seen.values())))
     setContentLoading(true)
     try {
       const memDir = `${instance.workspacePath}/memory`
-      const safePath = path.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+      // Base64-encode the agent-controlled path to prevent shell/Python string injection
+      const b64Path = btoa(unescape(encodeURIComponent(path)))
+      const b64MemDir = btoa(unescape(encodeURIComponent(memDir)))
       const py = `python3 -c "
-import sqlite3, json, os
-path_val = '${safePath}'
-dbs = ['${memDir}/main.sqlite', '${memDir}/command.sqlite']
+import sqlite3, json, os, base64
+path_val = base64.b64decode('${b64Path}').decode()
+mem_dir = base64.b64decode('${b64MemDir}').decode()
+dbs = [mem_dir + '/main.sqlite', mem_dir + '/command.sqlite']
 chunks = []
 for db in dbs:
     if not os.path.exists(db): continue

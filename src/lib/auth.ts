@@ -43,9 +43,12 @@ export function checkPassword(input: string): boolean {
   const pw = getPassword()
   if (!pw) return false
   try {
-    // Hash both to fixed-length digests so timingSafeEqual is always comparing equal-length buffers
-    const a = createHmac('sha256', 'clawgrid-pw').update(input).digest()
-    const b = createHmac('sha256', 'clawgrid-pw').update(pw).digest()
+    // HMAC both strings to fixed-length digests: timingSafeEqual requires equal-length buffers,
+    // and raw string comparison would leak length via early exit.
+    // Uses PANEL_SECRET so the digest is keyed with a deployment-specific secret,
+    // not a public constant — brute-forcing requires knowing the secret too.
+    const a = createHmac('sha256', secret()).update(input).digest()
+    const b = createHmac('sha256', secret()).update(pw).digest()
     return timingSafeEqual(a, b)
   } catch {
     return false

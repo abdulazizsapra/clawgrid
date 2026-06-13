@@ -14,7 +14,8 @@ export interface SshResult {
 function readKey(keyPath: string): Buffer {
   const resolved = path.resolve(keyPath.replace(/^~/, os.homedir()))
   const home = os.homedir()
-  const allowed = [home + path.sep, '/root/.ssh/', '/etc/ssh/']
+  // /etc/ssh/ excluded intentionally — host private keys live there and should not be readable via instances
+  const allowed = [home + path.sep, '/root/.ssh/']
   if (!allowed.some(dir => resolved.startsWith(dir))) {
     throw new Error('SSH key path must be within the home directory or /root/.ssh')
   }
@@ -114,6 +115,7 @@ export async function restartGateway(instance: OpenClawInstance): Promise<SshRes
 }
 
 export async function getGatewayLogs(instance: OpenClawInstance, lines: unknown = 100): Promise<string> {
+  // Clamp to [1, 10000] and coerce to int — `lines` comes from untrusted user input via the logs API
   const n = Math.min(Math.max(Math.floor(Number(lines)) || 100, 1), 10000)
   const result = await runSshCommand(
     instance,

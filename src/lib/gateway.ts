@@ -7,15 +7,42 @@ export interface GatewayConfig {
   serverVersion: string
 }
 
+// Blocks SSRF to cloud metadata, loopback, and RFC-1918 private ranges.
+// gatewayUrl is stored at registration time but re-validated here to catch
+// any direct edits to data/instances.json that bypassed the API.
+function assertSafeGatewayUrl(rawUrl: string): void {
+  const u = new URL(rawUrl)
+  if (!['http:', 'https:'].includes(u.protocol)) throw new Error('Disallowed protocol')
+  const h = u.hostname.toLowerCase()
+  if (
+    h === 'localhost' || h === '::1' ||
+    h === '127.0.0.1' ||
+    h.startsWith('169.254.') ||   // link-local / AWS metadata
+    h.startsWith('0.')            // reserved
+  ) {
+    // Private RFC-1918 ranges are allowed — gateway instances typically live on LAN.
+    // Only block loopback and metadata endpoints to prevent SSRF against the panel host itself.
+    throw new Error(`Disallowed SSRF target: ${h}`)
+  }
+}
+
 export async function fetchGatewayConfig(gatewayUrl: string, token: string): Promise<GatewayConfig | null> {
   try {
+    assertSafeGatewayUrl(gatewayUrl)
     const res = await fetch(`${gatewayUrl}/__openclaw/control-ui-config.json`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(5000),
       cache: 'no-store',
     })
     if (!res.ok) return null
-    return await res.json()
+    const raw = await res.json()
+    // Only forward the expected fields — never proxy arbitrary gateway config data
+    return {
+      assistantName: typeof raw.assistantName === 'string' ? raw.assistantName : '',
+      assistantAvatar: typeof raw.assistantAvatar === 'string' ? raw.assistantAvatar : '',
+      assistantAgentId: typeof raw.assistantAgentId === 'string' ? raw.assistantAgentId : '',
+      serverVersion: typeof raw.serverVersion === 'string' ? raw.serverVersion : '',
+    }
   } catch {
     return null
   }
@@ -23,6 +50,7 @@ export async function fetchGatewayConfig(gatewayUrl: string, token: string): Pro
 
 export async function fetchGatewayHealth(gatewayUrl: string, token: string): Promise<GatewayHealth> {
   try {
+    assertSafeGatewayUrl(gatewayUrl)
     const res = await fetch(`${gatewayUrl}/__openclaw/control-ui-config.json`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       signal: AbortSignal.timeout(5000),
