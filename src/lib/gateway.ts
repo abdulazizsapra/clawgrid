@@ -7,7 +7,10 @@ export interface GatewayConfig {
   serverVersion: string
 }
 
-// Blocks SSRF to cloud metadata, loopback, and RFC-1918 private ranges.
+// Blocks SSRF to cloud metadata endpoints.
+// Loopback (localhost / 127.0.0.1) and RFC-1918 private ranges are intentionally
+// allowed because gateways are typically exposed on the panel host via autossh tunnels
+// (localhost:4000, localhost:4001, …) or on a LAN. All requests are server-side only.
 // gatewayUrl is stored at registration time but re-validated here to catch
 // any direct edits to data/instances.json that bypassed the API.
 function assertSafeGatewayUrl(rawUrl: string): void {
@@ -15,13 +18,9 @@ function assertSafeGatewayUrl(rawUrl: string): void {
   if (!['http:', 'https:'].includes(u.protocol)) throw new Error('Disallowed protocol')
   const h = u.hostname.toLowerCase()
   if (
-    h === 'localhost' || h === '::1' ||
-    h === '127.0.0.1' ||
     h.startsWith('169.254.') ||   // link-local / AWS metadata
     h.startsWith('0.')            // reserved
   ) {
-    // Private RFC-1918 ranges are allowed — gateway instances typically live on LAN.
-    // Only block loopback and metadata endpoints to prevent SSRF against the panel host itself.
     throw new Error(`Disallowed SSRF target: ${h}`)
   }
 }
