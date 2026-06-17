@@ -26,6 +26,8 @@ const CHANNEL_META: Record<string, {
       { key: 'dmPolicy', label: 'DM Policy', type: 'select', options: ['allowlist', 'all', 'none'], help: 'Who can start a DM with the agent.' },
       { key: 'groupPolicy', label: 'Channel Policy', type: 'select', options: ['allowlist', 'all', 'none'], help: 'Which channels the agent responds in.' },
       { key: 'allowFrom', label: 'Allowed User IDs', type: 'list', placeholder: 'U0XXXXX', help: 'Slack user IDs allowed to interact. Find yours via Slack profile → More → Copy member ID.' },
+      { key: 'ackEmoji', label: 'Acknowledgement Reaction', type: 'emoji', placeholder: 'eyes', help: 'Emoji the agent reacts with to acknowledge it has seen a message.' },
+      { key: 'typingEmoji', label: 'Typing Reaction', type: 'emoji', placeholder: 'brain', help: 'Emoji the agent adds while it is thinking / generating a reply.' },
     ],
   },
   telegram: {
@@ -79,10 +81,17 @@ const CHANNEL_META: Record<string, {
 interface FieldDef {
   key: string
   label: string
-  type: 'text' | 'secret' | 'toggle' | 'select' | 'list'
+  type: 'text' | 'secret' | 'toggle' | 'select' | 'list' | 'emoji'
   placeholder?: string
   help?: string
   options?: string[]
+}
+
+const EMOJI_PREVIEW: Record<string, string> = {
+  eyes: '👀', brain: '🧠', white_check_mark: '✅', thumbsup: '👍',
+  thumbs_up: '👍', robot_face: '🤖', thinking_face: '🤔', bulb: '💡',
+  zap: '⚡', fire: '🔥', speech_balloon: '💬', memo: '📝', clock1: '🕐',
+  hourglass: '⏳', check: '✔️', x: '❌', wave: '👋', eyes_closed: '😌',
 }
 
 
@@ -189,6 +198,34 @@ function FieldEditor({ def, value, onChange }: {
           </div>
         )}
         {arr.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-dim)', fontStyle: 'italic' }}>No entries — press Enter to add</div>}
+      </div>
+    )
+  }
+
+  if (def.type === 'emoji') {
+    const code = String(value ?? '').replace(/^:|:$/g, '')
+    const preview = EMOJI_PREVIEW[code]
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <span style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', fontSize: 13, pointerEvents: 'none', userSelect: 'none' }}>:</span>
+          <input
+            type="text"
+            value={code}
+            onChange={e => onChange(e.target.value.replace(/:/g, ''))}
+            placeholder={def.placeholder ?? 'emoji_name'}
+            style={{ ...base, paddingLeft: 20, paddingRight: 20 }}
+          />
+          <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)', fontSize: 13, pointerEvents: 'none', userSelect: 'none' }}>:</span>
+        </div>
+        <div style={{
+          width: 38, height: 38, borderRadius: 9, border: '1px solid var(--border)',
+          background: 'var(--surface2)', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: preview ? 20 : 12,
+          color: preview ? undefined : 'var(--text-dim)', flexShrink: 0,
+        }}>
+          {preview ?? (code ? '?' : '—')}
+        </div>
       </div>
     )
   }
@@ -414,7 +451,7 @@ print('ok')
   function addChannel(key: string) {
     const defaults: Record<string, unknown> = { enabled: false }
     // Pre-fill sensible defaults per channel
-    if (key === 'slack') { defaults.mode = 'socket'; defaults.dmPolicy = 'allowlist'; defaults.groupPolicy = 'allowlist'; defaults.requireMention = false; defaults.allowFrom = [] }
+    if (key === 'slack') { defaults.mode = 'socket'; defaults.dmPolicy = 'allowlist'; defaults.groupPolicy = 'allowlist'; defaults.requireMention = false; defaults.allowFrom = []; defaults.ackEmoji = 'eyes'; defaults.typingEmoji = 'brain' }
     if (key === 'telegram') { defaults.requireMention = false; defaults.allowFrom = [] }
     if (key === 'discord') { defaults.requireMention = true; defaults.guildIds = [] }
     setChannels(prev => ({ ...prev, [key]: defaults }))

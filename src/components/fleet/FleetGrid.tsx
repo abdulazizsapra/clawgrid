@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { MessageSquare, Clock, Brain, Terminal, Settings, Activity, ArrowUpCircle, AlertTriangle, CheckCircle, Users, History } from 'lucide-react'
+import { useState } from 'react'
+import { MessageSquare, Clock, Brain, Terminal, Settings, Activity, ArrowUpCircle, AlertTriangle, CheckCircle, Users, History, RotateCcw } from 'lucide-react'
 import type { OpenClawInstance, GatewayHealth } from '@/types'
 import type { InstanceKPIs } from '@/lib/fleet'
 
@@ -45,6 +46,30 @@ function KpiCell({ label, value, sub, color, alert }: { label: string; value: st
 }
 
 export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
+  const [restarting, setRestarting] = useState<Record<string, boolean>>({})
+  const [restartMsg, setRestartMsg] = useState<Record<string, string>>({})
+
+  async function restart(id: string) {
+    setRestarting(r => ({ ...r, [id]: true }))
+    setRestartMsg(m => ({ ...m, [id]: '' }))
+    try {
+      const res = await fetch(`/api/ssh/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restart' }),
+      })
+      const data = await res.json()
+      const msg = data.code === 0 ? 'Restarted' : (data.error ?? `Exit ${data.code}`)
+      setRestartMsg(m => ({ ...m, [id]: msg }))
+      setTimeout(() => setRestartMsg(m => ({ ...m, [id]: '' })), 4000)
+    } catch {
+      setRestartMsg(m => ({ ...m, [id]: 'SSH error' }))
+      setTimeout(() => setRestartMsg(m => ({ ...m, [id]: '' })), 4000)
+    } finally {
+      setRestarting(r => ({ ...r, [id]: false }))
+    }
+  }
+
   if (instances.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-muted)' }}>
@@ -63,6 +88,8 @@ export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
         const roleColor = ROLE_COLORS[inst.role]
         const kpis = inst.kpis
         const offline = inst.status === 'offline'
+        const isRestarting = restarting[inst.id] ?? false
+        const msg = restartMsg[inst.id] ?? ''
 
         return (
           <div
@@ -129,6 +156,24 @@ export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
                     <CheckCircle size={11} /> healthy
                   </span>
                 ) : null}
+                {msg && (
+                  <span style={{ fontSize: 11, color: msg === 'Restarted' ? 'var(--success)' : 'var(--error)' }}>
+                    {msg}
+                  </span>
+                )}
+                <button
+                  onClick={() => restart(inst.id)}
+                  disabled={isRestarting}
+                  title="Restart gateway"
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: 28, height: 28, borderRadius: 7, border: '1px solid var(--border)',
+                    background: 'var(--surface2)', color: 'var(--text-muted)',
+                    cursor: isRestarting ? 'default' : 'pointer', opacity: isRestarting ? 0.5 : 1,
+                  }}
+                >
+                  <RotateCcw size={13} style={{ animation: isRestarting ? 'spin 1s linear infinite' : 'none' }} />
+                </button>
                 <Link href={`/instances/${inst.id}/settings`} style={{ color: 'var(--text-dim)', padding: 4, display: 'flex' }}>
                   <Settings size={14} />
                 </Link>
