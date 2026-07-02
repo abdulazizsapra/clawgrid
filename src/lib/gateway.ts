@@ -13,7 +13,7 @@ export interface GatewayConfig {
 // (localhost:4000, localhost:4001, …) or on a LAN. All requests are server-side only.
 // gatewayUrl is stored at registration time but re-validated here to catch
 // any direct edits to data/instances.json that bypassed the API.
-function assertSafeGatewayUrl(rawUrl: string): void {
+export function assertSafeGatewayUrl(rawUrl: string): void {
   const u = new URL(rawUrl)
   if (!['http:', 'https:'].includes(u.protocol)) throw new Error('Disallowed protocol')
   const h = u.hostname.toLowerCase()
@@ -76,6 +76,7 @@ export async function* streamChat(
   messages: { role: string; content: string }[],
   model = 'openclaw'
 ): AsyncGenerator<string> {
+  assertSafeGatewayUrl(gatewayUrl)
   const res = await fetch(`${gatewayUrl}/v1/chat/completions`, {
     method: 'POST',
     headers: {

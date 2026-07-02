@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getInstance } from '@/lib/instances'
-import { runSshCommand, restartGateway, getGatewayLogs, getSystemStats } from '@/lib/ssh'
+import { runSshCommand, restartGateway, getGatewayLogs, getSystemStats, updateOpenclaw } from '@/lib/ssh'
 
 export async function POST(
   req: NextRequest,
@@ -25,6 +25,10 @@ export async function POST(
       case 'stats': {
         const stats = await getSystemStats(inst)
         return NextResponse.json({ stats })
+      }
+      case 'update': {
+        const result = await updateOpenclaw(inst)
+        return NextResponse.json(result)
       }
       case 'exec': {
         if (!args?.command) return NextResponse.json({ error: 'command required' }, { status: 400 })

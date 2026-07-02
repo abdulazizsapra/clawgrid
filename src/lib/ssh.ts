@@ -19,7 +19,15 @@ function readKey(keyPath: string): Buffer {
   if (!allowed.some(dir => resolved.startsWith(dir))) {
     throw new Error('SSH key path must be within the home directory or /root/.ssh')
   }
-  return fs.readFileSync(resolved)
+  // Resolve symlinks so a link inside ~/.ssh/ can't point outside the allowed tree
+  let real: string
+  try { real = fs.realpathSync(resolved) } catch {
+    throw new Error('SSH key path does not exist or cannot be resolved')
+  }
+  if (!allowed.some(dir => real.startsWith(dir))) {
+    throw new Error('SSH key path resolves outside the allowed directories')
+  }
+  return fs.readFileSync(real)
 }
 
 function execOnClient(conn: Client, command: string): Promise<SshResult> {
@@ -130,4 +138,12 @@ export async function getSystemStats(instance: OpenClawInstance): Promise<string
     'uptime && echo "---" && free -m && echo "---" && df -h / && echo "---" && ps aux --sort=-%cpu | head -10'
   )
   return result.stdout
+}
+
+export async function updateOpenclaw(instance: OpenClawInstance): Promise<SshResult> {
+  // Source nvm for the openclaw user so npm is on PATH, install latest, then restart
+  return runSshCommand(
+    instance,
+    'sudo -u openclaw bash -lc "source ~/.nvm/nvm.sh && npm install -g openclaw@latest" 2>&1 && sudo systemctl restart openclaw 2>/dev/null || (pkill -f "openclaw.*gateway"; sleep 2; nohup openclaw gateway --port 18789 >> ~/gateway.log 2>&1 &)'
+  )
 }

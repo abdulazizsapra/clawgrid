@@ -123,7 +123,7 @@ function InstanceRoutingCard({ instance }: { instance: OpenClawInstance }) {
   const checkAgent = useCallback(async () => {
     upd({ agentChecking: true, agentStatus: null })
     try {
-      const b64Wp = btoa(instance.workspacePath)
+      const b64Wp = btoa(unescape(encodeURIComponent(instance.workspacePath)))
       const raw = await sshExec(instance.id, `python3 - <<'PYEOF'
 import json, base64
 from pathlib import Path
@@ -163,8 +163,8 @@ PYEOF`)
     upd({ applying: true, applyResult: null })
     try {
       const pDef = PROVIDERS.find(p => p.id === s.provider)!
-      const b64Wp = btoa(instance.workspacePath)
-      const b64Key = btoa(key)
+      const b64Wp = btoa(unescape(encodeURIComponent(instance.workspacePath)))
+      const b64Key = btoa(unescape(encodeURIComponent(key)))
       const profileName = `${s.provider}:default`
       const profileJson = JSON.stringify({
         provider: pDef.profileProvider,
@@ -219,11 +219,12 @@ PYEOF`)
   // ── Restart gateway ──
   async function restartGateway() {
     try {
-      await fetch(`/api/ssh/${instance.id}`, {
+      const res = await fetch(`/api/ssh/${instance.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'restart' }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       upd({ applyResult: { ok: true, msg: 'Gateway restarted.' } })
     } catch (e) {
       upd({ applyResult: { ok: false, msg: e instanceof Error ? e.message : 'Restart failed' } })

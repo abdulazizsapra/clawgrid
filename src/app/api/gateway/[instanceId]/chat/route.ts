@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getInstance } from '@/lib/instances'
+import { assertSafeGatewayUrl } from '@/lib/gateway'
 
 export async function POST(
   req: NextRequest,
@@ -11,11 +12,13 @@ export async function POST(
 
   const body = await req.json()
 
-  // Apply instance-level model routing: inject defaultModel unless the caller
-  // already sent a specific non-default model (not 'openclaw' placeholder)
+  // Apply instance-level model routing only when a routing provider is configured.
+  // Without routingProvider, the gateway handles model selection itself and only
+  // accepts 'openclaw' or 'openclaw/<agentId>' — substituting defaultModel would
+  // cause a 400 on older gateway versions.
   const callerModel: string = body.model ?? ''
   const isPlaceholder = !callerModel || callerModel === 'openclaw'
-  if (isPlaceholder && inst.defaultModel) {
+  if (isPlaceholder && inst.routingProvider && inst.defaultModel) {
     body.model = inst.defaultModel
     // Attach fallback chain if configured (OpenRouter extra_body)
     if (inst.modelFallbacks?.length) {
@@ -24,6 +27,10 @@ export async function POST(
         models: [inst.defaultModel, ...inst.modelFallbacks],
       }
     }
+  }
+
+  try { assertSafeGatewayUrl(inst.gatewayUrl) } catch (e) {
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : 'Disallowed gateway URL' }), { status: 400, headers: { 'Content-Type': 'application/json' } })
   }
 
   let upstreamRes: Response

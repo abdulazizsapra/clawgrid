@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { MessageSquare, Clock, Brain, Terminal, Settings, Activity, ArrowUpCircle, AlertTriangle, CheckCircle, Users, History, RotateCcw } from 'lucide-react'
+import { MessageSquare, Clock, Brain, Terminal, Settings, Activity, ArrowUpCircle, AlertTriangle, CheckCircle, Users, History, RotateCcw, Download } from 'lucide-react'
 import type { OpenClawInstance, GatewayHealth } from '@/types'
 import type { InstanceKPIs } from '@/lib/fleet'
 
@@ -48,6 +48,8 @@ function KpiCell({ label, value, sub, color, alert }: { label: string; value: st
 export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
   const [restarting, setRestarting] = useState<Record<string, boolean>>({})
   const [restartMsg, setRestartMsg] = useState<Record<string, string>>({})
+  const [updating, setUpdating] = useState<Record<string, boolean>>({})
+  const [updateMsg, setUpdateMsg] = useState<Record<string, string>>({})
 
   async function restart(id: string) {
     setRestarting(r => ({ ...r, [id]: true }))
@@ -67,6 +69,28 @@ export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
       setTimeout(() => setRestartMsg(m => ({ ...m, [id]: '' })), 4000)
     } finally {
       setRestarting(r => ({ ...r, [id]: false }))
+    }
+  }
+
+  async function update(id: string, name: string) {
+    if (!confirm(`Update OpenClaw on ${name}? This will install the latest version and restart the gateway.`)) return
+    setUpdating(u => ({ ...u, [id]: true }))
+    setUpdateMsg(m => ({ ...m, [id]: '' }))
+    try {
+      const res = await fetch(`/api/ssh/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update' }),
+      })
+      const data = await res.json()
+      const msg = data.code === 0 ? 'Updated & restarted' : (data.error ?? `Exit ${data.code}`)
+      setUpdateMsg(m => ({ ...m, [id]: msg }))
+      setTimeout(() => setUpdateMsg(m => ({ ...m, [id]: '' })), 6000)
+    } catch {
+      setUpdateMsg(m => ({ ...m, [id]: 'SSH error' }))
+      setTimeout(() => setUpdateMsg(m => ({ ...m, [id]: '' })), 4000)
+    } finally {
+      setUpdating(u => ({ ...u, [id]: false }))
     }
   }
 
@@ -90,6 +114,8 @@ export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
         const offline = inst.status === 'offline'
         const isRestarting = restarting[inst.id] ?? false
         const msg = restartMsg[inst.id] ?? ''
+        const isUpdating = updating[inst.id] ?? false
+        const upMsg = updateMsg[inst.id] ?? ''
 
         return (
           <div
@@ -160,6 +186,28 @@ export function FleetGrid({ instances }: { instances: InstanceWithHealth[] }) {
                   <span style={{ fontSize: 11, color: msg === 'Restarted' ? 'var(--success)' : 'var(--error)' }}>
                     {msg}
                   </span>
+                )}
+                {upMsg && (
+                  <span style={{ fontSize: 11, color: upMsg === 'Updated & restarted' ? 'var(--success)' : 'var(--error)' }}>
+                    {upMsg}
+                  </span>
+                )}
+                {kpis?.updateAvailable && (
+                  <button
+                    onClick={() => update(inst.id, inst.name)}
+                    disabled={isUpdating}
+                    title={`Update to v${kpis.latestVersion}`}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 10px', borderRadius: 7, fontSize: 11,
+                      background: 'rgba(59,130,246,0.12)', color: 'var(--accent)',
+                      border: '1px solid rgba(59,130,246,0.25)',
+                      cursor: isUpdating ? 'default' : 'pointer', opacity: isUpdating ? 0.5 : 1,
+                    }}
+                  >
+                    <Download size={11} style={{ animation: isUpdating ? 'spin 1s linear infinite' : 'none' }} />
+                    {isUpdating ? 'Updating…' : `Update`}
+                  </button>
                 )}
                 <button
                   onClick={() => restart(inst.id)}

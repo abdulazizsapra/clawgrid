@@ -20,7 +20,7 @@ export function OpenRouterSetup({ instance }: { instance: OpenClawInstance }) {
   const checkStatus = useCallback(async () => {
     setChecking(true)
     try {
-      const b64Wp = btoa(instance.workspacePath)
+      const b64Wp = btoa(unescape(encodeURIComponent(instance.workspacePath)))
       const raw = await sshExec(instance.id, `python3 - <<'PYEOF'
 import json, base64
 from pathlib import Path
@@ -58,8 +58,8 @@ PYEOF`)
     setApplying(true)
     setResult(null)
     try {
-      const b64Wp = btoa(instance.workspacePath)
-      const b64 = btoa(key)
+      const b64Wp = btoa(unescape(encodeURIComponent(instance.workspacePath)))
+      const b64 = btoa(unescape(encodeURIComponent(key)))
       const raw = await sshExec(instance.id, `python3 - <<'PYEOF'
 import json, base64
 from pathlib import Path

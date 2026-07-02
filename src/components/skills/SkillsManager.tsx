@@ -282,10 +282,10 @@ PYEOF`),
     setToggling(plugin.id)
     try {
       const cmd = plugin.enabled ? 'disable' : 'enable'
-      // Sanitize plugin.id — it comes from agent-side JSON and could contain shell metacharacters
-      const safeId = plugin.id.replace(/[^a-zA-Z0-9._-]/g, '')
-      if (!safeId) throw new Error('Invalid plugin id')
-      await sshExec(instance.id, `openclaw plugins ${cmd} ${safeId} 2>&1 || echo "done"`)
+      if (!plugin.id) throw new Error('Invalid plugin id')
+      // Single-quote the id so any special characters are inert to the shell
+      const shellId = plugin.id.replace(/'/g, "'\\''")
+      await sshExec(instance.id, `openclaw plugins ${cmd} '${shellId}' 2>&1 || echo "done"`)
       setPlugins(prev => prev.map(p => p.id === plugin.id ? { ...p, enabled: !p.enabled } : p))
     } catch (e) {
       alert(`Failed: ${e instanceof Error ? e.message : String(e)}`)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getRegistry, upsertInstance, deleteInstance } from '@/lib/instances'
+import { getRegistry, getInstance, upsertInstance, deleteInstance } from '@/lib/instances'
 import type { OpenClawInstance } from '@/types'
 
 // Strip server-only fields before sending instance data to the browser
@@ -50,7 +50,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  upsertInstance(instance)
+  // Merge server-only fields from the existing registry entry — the browser never sends
+  // these back (sanitize() strips them from GET responses) so a partial save must not wipe them.
+  const existing = getInstance(instance.id)
+  const toStore: OpenClawInstance = {
+    ...instance,
+    token: instance.token ?? existing?.token ?? '',
+    sshKeyPath: instance.sshKeyPath ?? existing?.sshKeyPath ?? '',
+  }
+  upsertInstance(toStore)
   return NextResponse.json({ ok: true })
 }
 
